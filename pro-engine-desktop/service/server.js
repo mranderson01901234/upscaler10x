@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs').promises;
+const sharp = require('sharp');
 const ImageProcessor = require('./image-processor');
 const HardwareDetector = require('./hardware-detector');
 const FileManager = require('./file-manager');
@@ -9,7 +10,7 @@ const FileManager = require('./file-manager');
 class ProEngineDesktopService {
     constructor() {
         this.app = express();
-        this.port = process.env.PORT || 3004;
+        this.port = process.env.PORT || 3006;
         this.sessions = new Map();
         this.imageProcessor = new ImageProcessor();
         this.hardwareDetector = new HardwareDetector();
@@ -22,15 +23,15 @@ class ProEngineDesktopService {
     setupMiddleware() {
         // CORS for browser communication
         this.app.use(cors({
-            origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3002'],
+            origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3002', 'http://localhost:8080'],
             credentials: true,
             methods: ['GET', 'POST', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization']
         }));
         
-        // Parse large JSON payloads for image data (1.5GB to account for Base64 overhead)
-        this.app.use(express.json({ limit: '1500mb' }));
-        this.app.use(express.urlencoded({ extended: true, limit: '1500mb' }));
+        // Parse large JSON payloads for image data (2GB to account for Base64 overhead - 1.5GB files)
+        this.app.use(express.json({ limit: '2000mb' }));
+        this.app.use(express.urlencoded({ extended: true, limit: '2000mb' }));
         
         // Request logging
         this.app.use((req, res, next) => {
@@ -108,7 +109,7 @@ class ProEngineDesktopService {
         // Process large image endpoint
         this.app.post('/api/process-large', async (req, res) => {
             try {
-                const { sessionId, imageData, scaleFactor, format, quality } = req.body;
+                const { sessionId, imageData, scaleFactor, format, quality, customFilename, customLocation } = req.body;
                 
                 // Validate request
                 if (!sessionId || !imageData || !scaleFactor) {
@@ -125,7 +126,9 @@ class ProEngineDesktopService {
                     config: {
                         scaleFactor: parseInt(scaleFactor),
                         format: format || 'png',
-                        quality: parseInt(quality || 95)
+                        quality: parseInt(quality || 95),
+                        customFilename: customFilename || null,
+                        customLocation: customLocation || null
                     },
                     progress: 0,
                     message: 'Processing queued...'
@@ -195,6 +198,56 @@ class ProEngineDesktopService {
             });
         });
         
+        // AI-enhanced processing endpoint
+        this.app.post('/api/process-with-ai', async (req, res) => {
+            try {
+                const { sessionId, imageData, scaleFactor, format, quality, customFilename, customLocation, aiPreferences = {} } = req.body;
+                
+                if (!sessionId || !imageData || !scaleFactor) {
+                    return res.status(400).json({ 
+                        error: 'Missing required parameters: sessionId, imageData, scaleFactor' 
+                    });
+                }
+                
+                console.log(`🚀 Starting AI-enhanced processing: ${scaleFactor}x scale`);
+                
+                const session = {
+                    id: sessionId,
+                    status: 'queued',
+                    startTime: Date.now(),
+                    config: {
+                        scaleFactor: parseInt(scaleFactor),
+                        format: format || 'png',
+                        quality: parseInt(quality || 95),
+                        customFilename: customFilename || null,
+                        customLocation: customLocation || null,
+                        aiPreferences: aiPreferences
+                    },
+                    progress: 0,
+                    message: 'AI processing queued...',
+                    aiEnhancement: true
+                };
+                
+                this.sessions.set(sessionId, session);
+                
+                // Start AI processing asynchronously
+                this.processImageWithAIAsync(sessionId, imageData, session.config);
+                
+                res.json({
+                    sessionId,
+                    status: 'queued',
+                    message: 'AI processing started'
+                });
+                
+            } catch (error) {
+                console.error('AI processing request error:', error);
+                res.status(500).json({
+                    error: 'Failed to start AI processing',
+                    details: error.message
+                });
+            }
+        });
+
         // Download processed file endpoint
         this.app.get('/api/download/:sessionId', async (req, res) => {
             try {
@@ -234,6 +287,8 @@ class ProEngineDesktopService {
             }
         });
         
+        // Note: TIFF preview generation moved to client-side for simplicity
+
         // Error handling middleware
         this.app.use((error, req, res, next) => {
             console.error('Server error:', error);
@@ -297,7 +352,9 @@ class ProEngineDesktopService {
             // Save to user's downloads folder using the new format structure
             const saveResult = await this.fileManager.saveProcessedImage(
                 processedImage,
-                sessionId
+                sessionId,
+                config.customFilename,
+                config.customLocation
             );
             
             session.status = 'complete';
@@ -323,6 +380,78 @@ class ProEngineDesktopService {
         }
     }
     
+    async processImageWithAIAsync(sessionId, imageData, config) {
+        const session = this.sessions.get(sessionId);
+        if (!session) return;
+        
+        try {
+            session.status = 'processing';
+            session.message = 'Starting AI-enhanced processing...';
+            
+            // Convert data URL to buffer
+            const base64Data = imageData.split(',')[1];
+            const imageBuffer = Buffer.from(base64Data, 'base64');
+            
+            // Use AI-enhanced processing
+            const processedImage = await this.imageProcessor.processImageWithAI(
+                imageBuffer,
+                config.scaleFactor,
+                (progressData) => {
+                    console.log('📊 AI Progress callback received:', progressData);
+                    session.progress = progressData.progress || 0;
+                    session.message = progressData.stage === 'ai-complete' ? 'AI enhancement complete, continuing with scaling...' : 
+                                      progressData.stage === 'scaling-complete' ? 'Scaling complete!' : 
+                                      progressData.stage === 'processing' ? 'AI-enhanced processing...' :
+                                      'Processing...';
+                },
+                config.aiPreferences
+            );
+            
+            // Get image info for result metadata
+            const imageInfo = await this.imageProcessor.getImageInfo(imageBuffer);
+            const result = {
+                buffer: processedImage.buffer || processedImage,
+                format: processedImage.format || 'png',
+                extension: processedImage.extension || 'png',
+                fileSize: (processedImage.buffer || processedImage).length,
+                dimensions: {
+                    width: Math.round(imageInfo.width * config.scaleFactor),
+                    height: Math.round(imageInfo.height * config.scaleFactor)
+                }
+            };
+            
+            // Save to user's downloads folder using the new format structure
+            const saveResult = await this.fileManager.saveProcessedImage(
+                processedImage,
+                sessionId,
+                config.customFilename,
+                config.customLocation
+            );
+            
+            session.status = 'complete';
+            session.progress = 100;
+            session.message = 'AI-enhanced processing complete!';
+            session.endTime = Date.now();
+            session.result = {
+                outputPath: saveResult.filepath,
+                filename: saveResult.filename,
+                fileSize: result.fileSize,
+                dimensions: result.dimensions,
+                format: saveResult.format,
+                processingTime: session.endTime - session.startTime,
+                aiEnhanced: true
+            };
+            
+            console.log(`✅ AI processing complete for session ${sessionId}: ${session.result.filename}`);
+            
+        } catch (error) {
+            console.error(`❌ AI processing failed for session ${sessionId}:`, error);
+            session.status = 'error';
+            session.error = error.message;
+            session.message = 'AI processing failed: ' + error.message;
+        }
+    }
+
     async cleanupSession(sessionId) {
         const session = this.sessions.get(sessionId);
         if (!session) return;

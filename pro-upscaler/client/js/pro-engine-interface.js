@@ -67,6 +67,10 @@ class ProEngineInterface {
     
     async processWithDesktopService(result, sessionId) {
         try {
+            // Get custom filename and location from UI
+            const customFilename = window.app ? window.app.getCustomFilenameForAPI() : null;
+            const customLocation = window.app ? window.app.getCustomLocationForAPI() : null;
+            
             // Send processing request to desktop service
             const response = await fetch(`${this.desktopServiceUrl}/api/process-large`, {
                 method: 'POST',
@@ -76,7 +80,9 @@ class ProEngineInterface {
                     imageData: result.dataUrl,
                     scaleFactor: result.scaleFactor || 2,
                     format: result.format || 'png',
-                    quality: result.quality || 95
+                    quality: result.quality || 95,
+                    customFilename: customFilename,
+                    customLocation: customLocation
                 })
             });
             
@@ -190,15 +196,10 @@ class ProEngineInterface {
             const estimatedTime = this.capabilities?.expectedPerformance?.estimatedTimeFor600MP || 5000;
             
             console.log(`Desktop service ready - ${category} (${estimatedTime}ms estimated for 600MP)`);
-            
-            if (window.app && window.app.showNotification) {
-                window.app.showNotification(
-                    `⚡ Pro Engine ready! Estimated processing time: ${Math.round(estimatedTime/1000)}s for large files.`,
-                    'success'
-                );
-            }
-        } else if (window.app) {
-            window.app.showNotification('⚡ Pro Engine ready!', 'success');
+            // Popup notification removed for better UX and sidebar space utilization
+        } else {
+            console.log('Web service ready');
+            // Popup notification removed for better UX and sidebar space utilization
         }
         
         // Update Pro status in header
@@ -207,12 +208,113 @@ class ProEngineInterface {
         }
     }
     
+    // AI-enhanced processing method
+    async processWithAIEnhancement(imageData, scaleFactor, aiPreferences = {}) {
+        if (!this.desktopServiceAvailable) {
+            throw new Error('Desktop service not available for AI enhancement');
+        }
+        
+        const sessionId = Date.now().toString() + '_ai';
+        
+        try {
+            console.log(`🤖 Starting AI-enhanced processing: ${scaleFactor}x`);
+            
+            const requestData = {
+                sessionId: sessionId,
+                imageData: imageData,
+                scaleFactor: scaleFactor,
+                format: 'png',
+                quality: 95,
+                aiPreferences: aiPreferences
+            };
+            
+            const response = await fetch(`${this.desktopServiceUrl}/api/process-with-ai`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`AI processing request failed: ${response.statusText}`);
+            }
+            
+            return this.monitorAIProcessing(sessionId);
+            
+        } catch (error) {
+            console.error('❌ AI enhancement request failed:', error);
+            throw error;
+        }
+    }
+
+    async monitorAIProcessing(sessionId) {
+        return new Promise((resolve, reject) => {
+            const eventSource = new EventSource(`${this.desktopServiceUrl}/api/progress/${sessionId}`);
+            
+            eventSource.onmessage = (event) => {
+                try {
+                    const progress = JSON.parse(event.data);
+                    
+                    // Handle AI-specific progress updates
+                    if (progress.stage === 'ai-complete') {
+                        console.log(`🤖 AI face enhancement completed in ${progress.aiTime}ms`);
+                    } else if (progress.stage === 'scaling-complete') {
+                        console.log(`⚡ Sharp scaling completed`);
+                    }
+                    
+                    // Update UI with AI-specific progress
+                    if (window.app && window.app.updateProgress) {
+                        window.app.updateProgress(progress.progress, progress.message);
+                    }
+                    
+                    if (progress.status === 'complete') {
+                        eventSource.close();
+                        this.showDesktopProcessingComplete(sessionId);
+                        resolve({
+                            sessionId,
+                            status: 'complete',
+                            aiEnhanced: true,
+                            message: 'AI-enhanced processing completed successfully'
+                        });
+                    } else if (progress.status === 'error') {
+                        eventSource.close();
+                        reject(new Error(progress.message || 'AI processing failed'));
+                    }
+                } catch (parseError) {
+                    console.error('❌ Progress parsing error:', parseError);
+                }
+            };
+            
+            eventSource.onerror = (error) => {
+                console.error('EventSource error:', error);
+                eventSource.close();
+                reject(new Error('Connection to AI processing service lost'));
+            };
+            
+            // Timeout after 5 minutes for AI processing
+            setTimeout(() => {
+                eventSource.close();
+                reject(new Error('AI processing timeout'));
+            }, 5 * 60 * 1000);
+        });
+    }
+
+    // Update existing processWithDesktopService method to support AI
+    async processWithDesktopServiceAI(result, sessionId, options = {}) {
+        if (options.aiEnhancement) {
+            return this.processWithAIEnhancement(result.dataUrl, result.scaleFactor || 2, options.aiPreferences);
+        } else {
+            // Use existing standard processing
+            return this.processWithDesktopService(result, sessionId);
+        }
+    }
+
     getServiceInfo() {
         return {
             isAvailable: this.isAvailable,
             desktopServiceAvailable: this.desktopServiceAvailable,
             capabilities: this.capabilities,
-            activeService: this.desktopServiceAvailable ? 'desktop' : 'web'
+            activeService: this.desktopServiceAvailable ? 'desktop' : 'web',
+            aiEnhancementAvailable: this.desktopServiceAvailable
         };
     }
 }

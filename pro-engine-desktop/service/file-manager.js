@@ -22,15 +22,23 @@ class FileManager {
         }
     }
     
-    generateFileName(sessionId, format = 'png', extension = 'png') {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `upscaled-${sessionId}-${timestamp}.${extension}`;
+    generateFileName(sessionId, format = 'png', extension = 'png', customName = null) {
+        let filename;
+        if (customName && customName.trim()) {
+            // Use custom filename, ensure it has the right extension
+            const cleanName = customName.trim();
+            filename = cleanName.endsWith(`.${extension}`) ? cleanName : `${cleanName}.${extension}`;
+        } else {
+            // Generate default filename
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            filename = `upscaled-${sessionId}-${timestamp}.${extension}`;
+        }
         
         console.log(`📁 Generated filename: ${filename} (${format.toUpperCase()} format)`);
         return filename;
     }
     
-    async saveProcessedImage(imageData, sessionId) {
+    async saveProcessedImage(imageData, sessionId, customFilename = null, customLocation = null) {
         try {
             // Handle new format object structure
             let imageBuffer = imageData.buffer || imageData;
@@ -47,8 +55,21 @@ class FileManager {
                 imageBuffer = Buffer.from(imageBuffer);
             }
             
-            const filename = this.generateFileName(sessionId, format, extension);
-            const filepath = path.join(this.outputDirectory, filename);
+            const filename = this.generateFileName(sessionId, format, extension, customFilename);
+            
+            // Use custom location if provided, otherwise use default
+            let outputDir = this.outputDirectory;
+            if (customLocation) {
+                // Validate and sanitize custom location
+                const sanitizedLocation = this.sanitizeCustomLocation(customLocation);
+                if (sanitizedLocation) {
+                    outputDir = sanitizedLocation;
+                    // Ensure custom directory exists
+                    await fs.mkdir(outputDir, { recursive: true });
+                }
+            }
+            
+            const filepath = path.join(outputDir, filename);
             
             await fs.writeFile(filepath, imageBuffer);
             
@@ -80,6 +101,29 @@ class FileManager {
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+    
+    sanitizeCustomLocation(customLocation) {
+        try {
+            // Convert relative paths to absolute paths under user home
+            if (!path.isAbsolute(customLocation)) {
+                customLocation = path.join(os.homedir(), customLocation);
+            }
+            
+            // Ensure the path is within user's home directory for security
+            const userHome = os.homedir();
+            const resolvedPath = path.resolve(customLocation);
+            
+            if (!resolvedPath.startsWith(userHome)) {
+                console.warn('⚠️ Custom location outside user home directory, using default');
+                return null;
+            }
+            
+            return resolvedPath;
+        } catch (error) {
+            console.error('Error sanitizing custom location:', error);
+            return null;
+        }
     }
     
     async cleanupTempFiles(maxAge = 24 * 60 * 60 * 1000) {

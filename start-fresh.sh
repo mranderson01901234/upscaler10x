@@ -54,10 +54,10 @@ sleep 3
 
 echo "🚀 Starting fresh servers..."
 
-# Start Pro Engine Desktop Service (port 3006)
-echo "🔧 Starting Pro Engine Desktop Service on port 3006..."
+# Start Pro Engine Desktop Service (port 3006) with 1.5GB file support
+echo "🔧 Starting Pro Engine Desktop Service on port 3006 (1.5GB file support)..."
 cd /home/mranderson/desktophybrid/pro-engine-desktop/service
-PORT=3006 node --expose-gc server.js &
+PORT=3006 node --expose-gc --max-old-space-size=8192 server.js &
 PRO_ENGINE_PID=$!
 echo "✅ Pro Engine started (PID: $PRO_ENGINE_PID)"
 

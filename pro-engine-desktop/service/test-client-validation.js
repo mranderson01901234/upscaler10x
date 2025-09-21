@@ -18,7 +18,7 @@ class MockFile {
 class FileHandler {
     constructor() {
         this.supportedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/tiff', 'image/tif'];
-        this.maxFileSize = 1024 * 1024 * 1024; // 1GB
+        this.maxFileSize = 1.5 * 1024 * 1024 * 1024; // 1.5GB
     }
     
     validateFile(file) {
@@ -38,11 +38,12 @@ function testFileValidation() {
     const testFiles = [
         new MockFile('test.tiff', 'image/tiff', 1024 * 1024),  // 1MB TIFF
         new MockFile('test.tif', 'image/tif', 2 * 1024 * 1024), // 2MB TIF
+        new MockFile('large.tiff', 'image/tiff', 1.3 * 1024 * 1024 * 1024), // 1.3GB TIFF (should pass)
         new MockFile('test.png', 'image/png', 512 * 1024),     // 512KB PNG
         new MockFile('test.jpg', 'image/jpeg', 800 * 1024),    // 800KB JPEG
         new MockFile('test.webp', 'image/webp', 600 * 1024),   // 600KB WebP
         new MockFile('test.bmp', 'image/bmp', 1024 * 1024),    // 1MB BMP (should fail)
-        new MockFile('huge.tiff', 'image/tiff', 1200 * 1024 * 1024), // 1.2GB TIFF (should fail)
+        new MockFile('huge.tiff', 'image/tiff', 1600 * 1024 * 1024), // 1.6GB TIFF (should fail)
     ];
     
     console.log('\n📋 Testing file validation:');
@@ -81,7 +82,8 @@ function testFileValidation() {
     console.log('\n🎉 Client-side validation tests completed!');
     console.log('\n📋 Summary:');
     console.log('   ✅ TIFF MIME types (image/tiff, image/tif) accepted');
-    console.log('   ✅ File size validation working (1GB limit)');
+    console.log('   ✅ File size validation working (1.5GB limit)');
+    console.log('   ✅ Large TIFF files (1.3GB) properly accepted');
     console.log('   ✅ Unsupported formats properly rejected');
     console.log('   ✅ MIME type mapping includes TIFF formats');
 }

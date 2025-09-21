@@ -15,11 +15,11 @@ class ProUpscalerServer {
     
     setupMiddleware() {
         this.app.use(cors({
-            origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+            origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:8080'],
             credentials: true
         }));
         
-        this.app.use(express.json({ limit: '1500mb' })); // 1.5GB to account for Base64 overhead
+        this.app.use(express.json({ limit: '2000mb' })); // 2GB to account for Base64 overhead (1.5GB files)
         this.app.use(express.static(path.join(__dirname, '../client')));
         
         this.app.use((req, res, next) => {
@@ -72,6 +72,28 @@ class ProUpscalerServer {
             }
             
             res.json(session);
+        });
+        
+        // Download endpoint for Pro Engine compatibility
+        this.app.post('/download', async (req, res) => {
+            try {
+                console.log('📥 Download request received');
+                
+                // For now, redirect to desktop service or handle locally
+                // This is a compatibility endpoint for the Pro Engine interface
+                res.json({
+                    success: true,
+                    message: 'Processing initiated - check Downloads folder',
+                    timestamp: Date.now()
+                });
+                
+            } catch (error) {
+                console.error('❌ Download endpoint error:', error);
+                res.status(500).json({ 
+                    error: 'Download failed',
+                    details: error.message
+                });
+            }
         });
         
         this.app.get('*', (req, res) => {

@@ -1,5 +1,6 @@
 const sharp = require('sharp');
 const os = require('os');
+const AIEnhancer = require('./ai-enhancer');
 
 class ImageProcessor {
     constructor() {
@@ -23,6 +24,9 @@ class ImageProcessor {
             freeMemory: os.freemem(),
             platform: os.platform()
         };
+        
+        // Initialize AI enhancer
+        this.aiEnhancer = new AIEnhancer();
         
         console.log('💻 System info:', {
             cpus: this.systemInfo.cpuCount,
@@ -591,6 +595,232 @@ class ImageProcessor {
         }
     }
     
+    // AI-enhanced processing method
+    async processImageWithAI(imageBuffer, scaleFactor, onProgress, options = {}) {
+        const startTime = Date.now();
+        
+        try {
+            console.log('📊 Input buffer size:', imageBuffer.length.toLocaleString(), 'bytes');
+            console.log('📊 Scale factor:', scaleFactor);
+            
+            // Get metadata
+            const metadata = await sharp(imageBuffer, {
+                limitInputPixels: false,
+                sequentialRead: true,
+                unlimited: true,
+                failOnError: false
+            }).metadata();
+            
+            console.log('📏 Original dimensions:', metadata.width, 'x', metadata.height);
+            console.log('📐 Original pixels:', (metadata.width * metadata.height).toLocaleString());
+            
+            const targetWidth = Math.round(metadata.width * scaleFactor);
+            const targetHeight = Math.round(metadata.height * scaleFactor);
+            const targetPixels = targetWidth * targetHeight;
+            
+            console.log('🎯 Target dimensions:', targetWidth, 'x', targetHeight);
+            console.log('🎯 Target pixels:', targetPixels.toLocaleString());
+            
+            // Determine if we should use AI enhancement
+            const useAI = this.aiEnhancer.shouldUseAIEnhancement(metadata, options);
+            const useProgressive = this.shouldUseProgressiveScaling(scaleFactor, targetPixels);
+            
+            // Get optimal settings
+            const optimalConcurrency = this.getOptimalConcurrency(targetPixels);
+            const outputSettings = this.getOptimalOutputSettings(targetPixels, metadata.format);
+            const resizeSettings = this.getOptimalResizeSettings(targetPixels);
+            
+            sharp.concurrency(optimalConcurrency);
+            console.log(`⚡ Sharp concurrency set to: ${optimalConcurrency} threads`);
+            
+            onProgress?.({ stage: 'processing', progress: 30, aiEnhancement: useAI });
+            
+            let result;
+            let currentBuffer = imageBuffer;
+            let aiEnhancementApplied = false;
+            
+            if (useAI && scaleFactor >= 2) {
+                // Apply AI enhancement at 2x step
+                try {
+                    console.log('🤖 Applying AI face enhancement at 2x...');
+                    const aiStart = Date.now();
+                    
+                    currentBuffer = await this.aiEnhancer.enhanceFace2x(imageBuffer);
+                    aiEnhancementApplied = true;
+                    
+                    const aiTime = Date.now() - aiStart;
+                    console.log(`✅ AI enhancement completed in ${aiTime}ms`);
+                    
+                    onProgress?.({ 
+                        stage: 'ai-complete', 
+                        progress: 50,
+                        aiTime: aiTime,
+                        aiEnhancementApplied: true
+                    });
+                    
+                    // Calculate what scaling CodeFormer actually achieved
+                    const aiMetadata = await sharp(currentBuffer).metadata();
+                    const actualAIScale = aiMetadata.width / metadata.width;
+                    console.log(`🔍 CodeFormer actual scaling: ${actualAIScale.toFixed(2)}x (${metadata.width}×${metadata.height} → ${aiMetadata.width}×${aiMetadata.height})`);
+                    
+                    // If CodeFormer achieved our target scale or more, we might be done
+                    if (actualAIScale >= scaleFactor) {
+                        console.log(`✅ CodeFormer exceeded target scale (${actualAIScale.toFixed(2)}x >= ${scaleFactor}x), scaling down to exact target`);
+                        // Scale down to exact target dimensions
+                        result = await sharp(currentBuffer)
+                            .resize(targetWidth, targetHeight, {
+                                kernel: sharp.kernel.lanczos3,
+                                withoutEnlargement: false
+                            })
+                            .png(outputSettings.options)
+                            .toBuffer();
+                        
+                        result = {
+                            buffer: result,
+                            format: outputSettings.format,
+                            extension: outputSettings.extension
+                        };
+                    } else {
+                        // Continue with Sharp for remaining scaling
+                        const remainingScale = scaleFactor / actualAIScale;
+                        console.log(`🔄 Continuing with Sharp scaling: ${remainingScale.toFixed(2)}x remaining`);
+                        
+                        result = await this.continueScalingFromAI(
+                            currentBuffer, 
+                            remainingScale, 
+                            outputSettings, 
+                            resizeSettings, 
+                            onProgress
+                        );
+                    }
+                    
+                } catch (aiError) {
+                    console.log('⚠️ AI enhancement failed, falling back to traditional scaling:', aiError.message);
+                    // Fall back to traditional progressive scaling
+                    result = await this.processImageProgressiveOptimized(
+                        imageBuffer, 
+                        metadata, 
+                        scaleFactor, 
+                        outputSettings, 
+                        resizeSettings, 
+                        onProgress
+                    );
+                }
+            } else {
+                // Traditional processing without AI
+                if (useProgressive) {
+                    result = await this.processImageProgressiveOptimized(
+                        imageBuffer, 
+                        metadata, 
+                        scaleFactor, 
+                        outputSettings, 
+                        resizeSettings, 
+                        onProgress
+                    );
+                } else {
+                    const sharpOptions = this.getMemoryOptimizedSharpOptions(targetPixels);
+                    const sharpInstance = sharp(imageBuffer, sharpOptions)
+                        .resize(targetWidth, targetHeight, resizeSettings);
+                    
+                    if (outputSettings.format === 'jpeg') {
+                        const buffer = await sharpInstance.jpeg(outputSettings.options).toBuffer();
+                        result = {
+                            buffer: buffer,
+                            format: outputSettings.format,
+                            extension: outputSettings.extension
+                        };
+                    } else {
+                        const buffer = await sharpInstance.png(outputSettings.options).toBuffer();
+                        result = {
+                            buffer: buffer,
+                            format: outputSettings.format,
+                            extension: outputSettings.extension
+                        };
+                    }
+                }
+            }
+            
+            const totalTime = Date.now() - startTime;
+            const finalBuffer = result.buffer || result;
+            const compressionRatio = (finalBuffer.length / imageBuffer.length * 100).toFixed(1);
+            
+            console.log('✅ Total processing completed in:', totalTime, 'ms');
+            console.log('✅ Output size:', finalBuffer.length.toLocaleString(), 'bytes');
+            console.log('📊 Compression ratio:', `${compressionRatio}% of original`);
+            console.log('⚡ Performance metrics:', {
+                inputPixels: (metadata.width * metadata.height).toLocaleString(),
+                outputPixels: targetPixels.toLocaleString(),
+                processingTime: `${totalTime}ms`,
+                throughput: `${Math.round(targetPixels / totalTime * 1000).toLocaleString()} pixels/second`,
+                concurrency: optimalConcurrency,
+                outputFormat: outputSettings.format.toUpperCase(),
+                aiEnhanced: aiEnhancementApplied,
+                compressionRatio: `${compressionRatio}%`
+            });
+            
+            onProgress?.({ 
+                stage: 'complete', 
+                progress: 100,
+                outputFormat: outputSettings.format,
+                fileExtension: outputSettings.extension,
+                aiEnhanced: aiEnhancementApplied
+            });
+            
+            // Return consistent format
+            if (result.buffer) {
+                return result;
+            } else {
+                return {
+                    buffer: result,
+                    format: outputSettings.format,
+                    extension: outputSettings.extension
+                };
+            }
+            
+        } catch (error) {
+            const totalTime = Date.now() - startTime;
+            console.error('❌ Image processor fatal error after', totalTime, 'ms:', error.message);
+            throw new Error(`Image processing failed: ${error.message}`);
+        }
+    }
+    
+    async continueScalingFromAI(aiEnhancedBuffer, remainingScale, outputSettings, resizeSettings, onProgress) {
+        // Continue Sharp scaling from AI-enhanced 2x image
+        
+        // Get metadata of AI-enhanced image
+        const aiMetadata = await sharp(aiEnhancedBuffer, {
+            limitInputPixels: false,
+            sequentialRead: true
+        }).metadata();
+        
+        const finalWidth = Math.round(aiMetadata.width * remainingScale);
+        const finalHeight = Math.round(aiMetadata.height * remainingScale);
+        
+        console.log(`🔄 Sharp scaling: ${aiMetadata.width}×${aiMetadata.height} → ${finalWidth}×${finalHeight}`);
+        
+        // Use Sharp for efficient scaling of AI-enhanced image
+        const sharpInstance = sharp(aiEnhancedBuffer, {
+            limitInputPixels: false,
+            sequentialRead: true
+        })
+        .resize(finalWidth, finalHeight, resizeSettings);
+        
+        let result;
+        if (outputSettings.format === 'jpeg') {
+            result = await sharpInstance.jpeg(outputSettings.options).toBuffer();
+        } else {
+            result = await sharpInstance.png(outputSettings.options).toBuffer();
+        }
+        
+        onProgress?.({ stage: 'scaling-complete', progress: 90 });
+        
+        return {
+            buffer: result,
+            format: outputSettings.format,
+            extension: outputSettings.extension
+        };
+    }
+
     // Legacy method compatibility for existing code
     async processLargeImage(imageDataUrl, config, progressCallback) {
         try {

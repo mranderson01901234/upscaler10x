@@ -26,6 +26,9 @@ class ProUpscalerApp {
         
         this.proEngine = new ProEngineInterface();
         
+        // Initialize file settings
+        this.customDownloadLocation = null;
+        
         this.updateProStatus();
         this.updateUIState('idle');
     }
@@ -53,6 +56,10 @@ class ProUpscalerApp {
             document.getElementById('quality-value').textContent = e.target.value;
             this.updateEstimates();
         });
+        
+        // File settings event handlers
+        document.getElementById('custom-filename')?.addEventListener('input', () => this.validateCustomFilename());
+        document.getElementById('browse-location')?.addEventListener('click', () => this.browseDownloadLocation());
         
         // Bind left panel buttons (sidebar results removed)
         document.getElementById('download-button-left')?.addEventListener('click', () => this.downloadResult());
@@ -85,7 +92,7 @@ class ProUpscalerApp {
     
     async processFile(file) {
         if (!this.fileHandler.validateFile(file)) {
-            this.showNotification('Please select a valid image file (PNG, JPEG, WebP, TIFF) up to 1GB', 'error');
+            this.showNotification('Please select a valid image file (PNG, JPEG, WebP, TIFF) up to 1.5GB', 'error');
             return;
         }
         
@@ -98,16 +105,213 @@ class ProUpscalerApp {
         }
         
         try {
+            const sizeMB = file.size / (1024 * 1024);
+            
+            // For extremely large files (>1GB) or TIFF files, skip browser preview entirely
+            if (this.fileHandler.shouldSkipBrowserPreview(file)) {
+                const isTiff = file.type === 'image/tiff' || file.type === 'image/tif';
+                
+                if (isTiff) {
+                    this.showNotification(`📋 TIFF file detected (${Math.round(sizeMB)}MB). Generating preview using desktop service...`, 'info');
+                    
+                    // Use desktop service to generate TIFF preview
+                    this.currentImage = await this.fileHandler.createTiffPreview(file);
+                    this.showDownscaledImagePreview(this.currentImage, file);
+                } else {
+                    this.showNotification(`🚀 Extremely large file detected (${Math.round(sizeMB)}MB). Preparing for desktop service processing...`, 'info');
+                    
+                    // Create minimal image data for extremely large files
+                    this.currentImage = {
+                        width: 'unknown',
+                        height: 'unknown', 
+                        dataUrl: null,
+                        file: file,
+                        isLargeFile: true
+                    };
+                    
+                    this.showLargeFilePreview(file);
+                }
+                
+                this.updateUIState('ready');
+                this.updateEstimates();
+                return;
+            }
+            
+            // For large files (100MB-1GB), create downscaled preview
+            if (this.fileHandler.shouldDownscalePreview(file)) {
+                const isTiff = file.type === 'image/tiff' || file.type === 'image/tif';
+                
+                if (isTiff) {
+                    this.showNotification(`📋 TIFF file detected (${Math.round(sizeMB)}MB). Generating preview using desktop service...`, 'info');
+                    this.currentImage = await this.fileHandler.createTiffPreview(file);
+                } else {
+                    this.showNotification(`📸 Creating optimized preview for large file (${Math.round(sizeMB)}MB)... Please wait.`, 'info');
+                    this.currentImage = await this.fileHandler.createDownscaledPreview(file);
+                }
+                
+                this.showDownscaledImagePreview(this.currentImage, file);
+                this.updateUIState('ready');
+                this.updateEstimates();
+                return;
+            }
+            
+            // Normal processing for smaller files (<100MB)
+            if (sizeMB > 50) {
+                this.showNotification(`📖 Loading file (${Math.round(sizeMB)}MB)... Please wait.`, 'info');
+            }
+            
             this.currentImage = await this.fileHandler.loadImage(file);
             this.showImagePreview(this.currentImage, file);
             this.updateUIState('ready');
             this.updateEstimates();
         } catch (error) {
             console.error('File processing error:', error);
-            this.showNotification('Error loading image file', 'error');
+            
+            // Provide specific error messages
+            let errorMessage = 'Error loading image file';
+            if (error.message.includes('timeout')) {
+                errorMessage = '⏱️ File too large for browser preview. Try using the desktop service for processing.';
+            } else if (error.message.includes('not be supported')) {
+                errorMessage = '🚫 Image format not supported by browser. Try converting to PNG/JPEG first.';
+            } else if (error.message.includes('Failed to read')) {
+                errorMessage = `📁 Cannot read file (${Math.round(file.size / 1024 / 1024)}MB). File may be corrupted or too large.`;
+            }
+            
+            this.showNotification(errorMessage, 'error');
         }
     }
     
+    showDownscaledImagePreview(imageData, file) {
+        // Hide upload area and show preview area
+        const uploadArea = document.getElementById('upload-area');
+        const previewArea = document.getElementById('preview-area');
+        const previewImage = document.getElementById('preview-image');
+        const fileName = document.getElementById('file-name');
+        const fileSize = document.getElementById('file-size');
+        
+        uploadArea.classList.add('hidden');
+        previewArea.classList.remove('hidden');
+        
+        // Check if we have a preview image or need to show placeholder
+        if (imageData.dataUrl && imageData.previewWidth > 0) {
+            // Show the downscaled preview image
+            previewImage.style.display = 'block';
+            previewImage.src = imageData.dataUrl;
+            previewImage.style.maxWidth = '100%';
+            previewImage.style.height = 'auto';
+            
+            // Add preview info overlay
+            const existingOverlay = previewImage.parentNode.querySelector('.preview-info-overlay');
+            if (existingOverlay) {
+                existingOverlay.remove();
+            }
+            
+            const previewOverlay = document.createElement('div');
+            previewOverlay.className = 'preview-info-overlay absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded';
+            previewOverlay.innerHTML = `
+                📸 Preview: ${imageData.previewWidth}×${imageData.previewHeight}<br>
+                📏 Original: ${imageData.width}×${imageData.height}<br>
+                🔍 Scale: ${Math.round(imageData.scale * 100)}%
+            `;
+            
+            // Make parent container relative for absolute positioning
+            previewImage.parentNode.style.position = 'relative';
+            previewImage.parentNode.appendChild(previewOverlay);
+            
+            // Show notification about preview scaling
+            this.showNotification(`✅ Preview created (${Math.round(imageData.scale * 100)}% scale). Processing will use full ${imageData.width}×${imageData.height} resolution.`, 'success');
+            
+        } else {
+            // No preview available - show file info placeholder
+            previewImage.style.display = 'none';
+            
+            // Remove any existing overlays
+            const existingOverlay = previewImage.parentNode.querySelector('.preview-info-overlay');
+            if (existingOverlay) {
+                existingOverlay.remove();
+            }
+            
+            // Create file info display for TIFF without preview
+            const existingTiffInfo = previewImage.parentNode.querySelector('.tiff-file-info');
+            if (existingTiffInfo) {
+                existingTiffInfo.remove();
+            }
+            
+            const tiffFileInfo = document.createElement('div');
+            tiffFileInfo.className = 'tiff-file-info flex flex-col items-center justify-center h-64 bg-muted/10 rounded-lg border-2 border-dashed border-border';
+            
+            const errorMessage = imageData.previewError ? `<div class="text-xs text-red-400 mt-2">Preview: ${imageData.previewError}</div>` : '';
+            const sizeInfo = imageData.estimatedSize || `${Math.round(file.size / (1024 * 1024))}MB`;
+            
+            tiffFileInfo.innerHTML = `
+                <div class="text-6xl mb-4">🖼️</div>
+                <div class="text-lg font-semibold mb-2">TIFF File Ready</div>
+                <div class="text-sm text-muted-foreground text-center mb-2">
+                    ${imageData.width}×${imageData.height} pixels<br>
+                    ${sizeInfo} file size
+                </div>
+                <div class="text-xs text-muted-foreground text-center">
+                    ${imageData.isTooLargeForPreview ? 'File too large for preview generation' : 'Preview not available'}<br>
+                    Will be processed by desktop service
+                </div>
+                ${errorMessage}
+            `;
+            
+            previewImage.parentNode.insertBefore(tiffFileInfo, previewImage);
+            
+            // Show notification about file ready for processing
+            this.showNotification(`✅ TIFF file ready (${imageData.width}×${imageData.height}). Processing will use full resolution.`, 'success');
+        }
+        
+        // Update the sidebar with file information
+        this.updateImageDetails(imageData, file);
+    }
+
+    showLargeFilePreview(file) {
+        // Hide upload area and show preview area for large files
+        const uploadArea = document.getElementById('upload-area');
+        const previewArea = document.getElementById('preview-area');
+        const previewImage = document.getElementById('preview-image');
+        
+        uploadArea.classList.add('hidden');
+        previewArea.classList.remove('hidden');
+        
+        // Show file info instead of image preview
+        previewImage.style.display = 'none';
+        
+        // Remove any existing overlays
+        const existingOverlay = previewImage.parentNode.querySelector('.preview-info-overlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+        
+        // Create large file info display
+        const existingLargeFileInfo = previewImage.parentNode.querySelector('.large-file-info');
+        if (existingLargeFileInfo) {
+            existingLargeFileInfo.remove();
+        }
+        
+        const largeFileInfo = document.createElement('div');
+        largeFileInfo.className = 'large-file-info flex flex-col items-center justify-center h-64 bg-muted/10 rounded-lg border-2 border-dashed border-border';
+        largeFileInfo.innerHTML = `
+            <div class="text-6xl mb-4">📁</div>
+            <div class="text-lg font-semibold mb-2">Extremely Large File Ready</div>
+            <div class="text-sm text-muted-foreground text-center">
+                File too large for browser preview<br>
+                Will be processed directly by desktop service
+            </div>
+        `;
+        
+        previewImage.parentNode.insertBefore(largeFileInfo, previewImage);
+        
+        // Update the sidebar with file information - create mock imageData for large files
+        const mockImageData = {
+            width: 'unknown',
+            height: 'unknown'
+        };
+        this.updateImageDetails(mockImageData, file);
+    }
+
     showImagePreview(imageData, file) {
         // Hide upload area and show preview area
         const uploadArea = document.getElementById('upload-area');
@@ -141,7 +345,13 @@ class ProUpscalerApp {
         }
         
         // Update details
-        if (dimensions) dimensions.textContent = `${imageData.width} × ${imageData.height}`;
+        if (dimensions) {
+            if (imageData.width === 'unknown' || imageData.height === 'unknown') {
+                dimensions.textContent = 'Unknown';
+            } else {
+                dimensions.textContent = `${imageData.width} × ${imageData.height}`;
+            }
+        }
         if (size) size.textContent = this.formatFileSize(file.size);
         if (format) format.textContent = file.type.split('/')[1].toUpperCase();
     }
@@ -192,19 +402,49 @@ class ProUpscalerApp {
         const format = formatEl.value;
         const quality = qualityEl ? parseInt(qualityEl.value) : 95;
         
-        const outputWidth = this.currentImage.width * scaleFactor;
-        const outputHeight = this.currentImage.height * scaleFactor;
+        // Always use original dimensions for calculations, not preview dimensions
+        const originalWidth = this.currentImage.width;
+        const originalHeight = this.currentImage.height;
+        
+        // Handle cases where dimensions might be 'unknown' for extremely large files
+        if (originalWidth === 'unknown' || originalHeight === 'unknown') {
+            // Update UI to show unknown state
+            const currentSizeEl = document.getElementById('current-size');
+            const targetSizeEl = document.getElementById('target-size');
+            const estimateEl = document.getElementById('processing-estimate');
+            
+            if (currentSizeEl) currentSizeEl.textContent = 'Unknown dimensions';
+            if (targetSizeEl) targetSizeEl.textContent = `Will be determined during processing`;
+            if (estimateEl) estimateEl.textContent = 'Processing time will be estimated when dimensions are detected';
+            return;
+        }
+        
+        const outputWidth = originalWidth * scaleFactor;
+        const outputHeight = originalHeight * scaleFactor;
         const estimatedSize = this.estimateFileSize(outputWidth, outputHeight, format, quality);
         const estimatedTime = this.estimateProcessingTime(outputWidth, outputHeight);
         
         // Update UI elements
+        const currentSizeEl = document.getElementById('current-size');
         const outputDimensions = document.getElementById('output-dimensions');
         const estimatedSizeEl = document.getElementById('estimated-size');
         const estimatedTimeEl = document.getElementById('estimated-time');
         
+        // Show original dimensions (what will actually be processed)
+        if (currentSizeEl) {
+            if (this.currentImage.isDownscaled) {
+                currentSizeEl.textContent = `${originalWidth} × ${originalHeight} (preview: ${this.currentImage.previewWidth} × ${this.currentImage.previewHeight})`;
+            } else {
+                currentSizeEl.textContent = `${originalWidth} × ${originalHeight}`;
+            }
+        }
+        
         if (outputDimensions) outputDimensions.textContent = `${outputWidth} × ${outputHeight}`;
         if (estimatedSizeEl) estimatedSizeEl.textContent = `~${this.formatFileSize(estimatedSize)}`;
         if (estimatedTimeEl) estimatedTimeEl.textContent = `~${estimatedTime}s`;
+        
+        // Update filename preview
+        this.updateFilenamePreview(format);
         
         this.checkUpgradePrompt(estimatedSize);
     }
@@ -281,10 +521,12 @@ class ProUpscalerApp {
         const scaleFactorEl = document.getElementById('scale-factor');
         const formatEl = document.getElementById('output-format');
         const qualityEl = document.getElementById('quality-slider');
+        const aiEnhancementEl = document.getElementById('ai-enhancement-toggle');
         
         const scaleFactor = scaleFactorEl ? parseInt(scaleFactorEl.value) : 2;
         const format = formatEl ? formatEl.value : 'png';
         const quality = qualityEl ? parseInt(qualityEl.value) : 95;
+        const aiEnhancement = aiEnhancementEl ? aiEnhancementEl.checked : false;
         
         try {
             // Check if pro-engine is available - if so, use it immediately
@@ -297,9 +539,29 @@ class ProUpscalerApp {
                 
                 this.updateProgress(25, 'Preparing image data for processing...');
                 
+                // For large/downscaled files, we need to read the original file
+                let imageDataUrl = this.currentImage.dataUrl;
+                
+                if (this.currentImage.isDownscaled || this.currentImage.isLargeFile) {
+                    this.updateProgress(30, 'Reading original file for processing...');
+                    try {
+                        // Read the original file directly for processing
+                        const originalFile = this.currentImage.file;
+                        imageDataUrl = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = (e) => resolve(e.target.result);
+                            reader.onerror = () => reject(new Error('Failed to read original file'));
+                            reader.readAsDataURL(originalFile);
+                        });
+                    } catch (error) {
+                        console.error('Error reading original file:', error);
+                        throw new Error('Failed to read original file for processing');
+                    }
+                }
+                
                 // Prepare result object for pro-engine
                 const proEngineResult = {
-                    dataUrl: this.currentImage.dataUrl,
+                    dataUrl: imageDataUrl,
                     scaleFactor: scaleFactor,
                     format: format,
                     quality: quality,
@@ -308,10 +570,24 @@ class ProUpscalerApp {
                     size: this.estimateFileSize(this.currentImage.width * scaleFactor, this.currentImage.height * scaleFactor, format, quality)
                 };
                 
-                this.updateProgress(50, 'Sending to Pro Engine for upscaling...');
+                this.updateProgress(50, aiEnhancement ? 'Sending to Pro Engine for AI-enhanced upscaling...' : 'Sending to Pro Engine for upscaling...');
                 
-                // Immediately start pro-engine processing
-                await this.proEngine.downloadLargeFile(proEngineResult, sessionId);
+                // Prepare AI enhancement options
+                const processingOptions = {
+                    aiEnhancement: aiEnhancement,
+                    aiPreferences: {
+                        fidelity: 0.05  // Optimized parameter from testing
+                    }
+                };
+                
+                // Use AI-enhanced processing if available and requested
+                if (aiEnhancement && this.proEngine.desktopServiceAvailable) {
+                    console.log('🤖 Starting AI-enhanced processing...');
+                    await this.proEngine.processWithDesktopServiceAI(proEngineResult, sessionId, processingOptions);
+                } else {
+                    // Standard processing
+                    await this.proEngine.downloadLargeFile(proEngineResult, sessionId);
+                }
                 
                 this.updateProgress(90, 'Processing complete, saving to Downloads folder...');
                 
@@ -334,8 +610,34 @@ class ProUpscalerApp {
             console.log('⚠️ Pro-engine not available, using local upscaler...');
             this.updateProgress(5, 'Initializing ultra-fast upscaling process...');
             
+            // For local processing, prepare the image data
+            let imageForProcessing = this.currentImage;
+            
+            if (this.currentImage.isDownscaled || this.currentImage.isLargeFile) {
+                this.updateProgress(10, 'Reading original file for local processing...');
+                try {
+                    // For local processing, we need to create proper image data from the original file
+                    const originalFile = this.currentImage.file;
+                    const originalDataUrl = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onerror = () => reject(new Error('Failed to read original file'));
+                        reader.readAsDataURL(originalFile);
+                    });
+                    
+                    // Create image data object with original file data
+                    imageForProcessing = {
+                        ...this.currentImage,
+                        dataUrl: originalDataUrl
+                    };
+                } catch (error) {
+                    console.error('Error reading original file for local processing:', error);
+                    throw new Error('Failed to read original file for local processing');
+                }
+            }
+            
             const result = await this.upscaler.upscaleImage(
-                this.currentImage,
+                imageForProcessing,
                 scaleFactor,
                 format,
                 quality,
@@ -770,44 +1072,35 @@ class ProUpscalerApp {
     updateUIState(state) {
         this.currentState = state;
         
-        const idleState = document.getElementById('idle-state');
-        const progressView = document.getElementById('progress-view');
-        const completeState = document.getElementById('complete-state');
+        const progressFooter = document.getElementById('progress-footer');
         const startButton = document.getElementById('start-processing');
-        
-        // Hide all state views
-        if (idleState) idleState.classList.add('hidden');
-        if (progressView) progressView.classList.add('hidden');
-        if (completeState) completeState.classList.add('hidden');
-        
-        // Hide action buttons
-        if (startButton) startButton.classList.add('hidden');
         
         // Show appropriate state and buttons
         switch (state) {
             case 'idle':
-                if (idleState) idleState.classList.remove('hidden');
+                // Progress footer always visible - just ensure it's shown
+                if (progressFooter) progressFooter.classList.remove('hidden');
                 if (startButton) {
-                    startButton.classList.remove('hidden');
                     startButton.disabled = true;
                 }
                 break;
             case 'ready':
-                if (idleState) idleState.classList.remove('hidden');
+                // Progress footer always visible - just ensure it's shown
+                if (progressFooter) progressFooter.classList.remove('hidden');
                 if (startButton) {
-                    startButton.classList.remove('hidden');
                     startButton.disabled = false;
                 }
                 break;
             case 'processing':
-                if (progressView) progressView.classList.remove('hidden');
+                // Progress footer always visible - ensure it's shown
+                if (progressFooter) progressFooter.classList.remove('hidden');
                 if (startButton) {
-                    startButton.classList.remove('hidden');
                     startButton.disabled = true;
                 }
                 break;
             case 'complete':
-                if (completeState) completeState.classList.remove('hidden');
+                // Progress footer always visible - keep it shown
+                if (progressFooter) progressFooter.classList.remove('hidden');
                 // Note: Download and Process Another buttons are now in the left panel
                 // They're shown via the showResults() method when the left panel is displayed
                 break;
@@ -872,9 +1165,10 @@ class ProUpscalerApp {
     
     showNotification(message, type = 'info') {
         const notification = document.createElement('div');
-        notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 max-w-sm ${
+        notification.className = `fixed top-12 right-4 p-3 rounded-lg shadow-lg z-40 max-w-sm text-sm ${
             type === 'error' ? 'bg-red-500 text-white' :
             type === 'success' ? 'bg-emerald-500 text-white' :
+            type === 'warning' ? 'bg-amber-500 text-white' :
             'bg-card border border-border'
         }`;
         notification.textContent = message;
@@ -961,36 +1255,250 @@ class ProUpscalerApp {
     /**
      * Show the downloaded filename in the status area
      */
-    showDownloadedFilename(filename, location = 'Downloads/') {
+    showDownloadedFilename(filename, location = null) {
         const filenameDisplay = document.getElementById('downloaded-filename-display');
         const filenameText = document.getElementById('downloaded-filename-text');
-        const downloadLocation = document.getElementById('download-location');
+        const downloadLocationEl = document.getElementById('download-location');
         
         if (filenameDisplay && filenameText) {
             filenameText.textContent = filename;
-            if (downloadLocation) {
-                downloadLocation.textContent = location;
+            if (downloadLocationEl) {
+                // Use custom location if available, otherwise use provided or default
+                const displayLocation = location || this.getDownloadLocationDisplay();
+                downloadLocationEl.textContent = displayLocation;
             }
             filenameDisplay.classList.remove('hidden');
             
-            console.log(`📁 Downloaded: ${filename} → ${location}`);
+            console.log(`📁 Downloaded: ${filename} → ${location || this.getDownloadLocationDisplay()}`);
         }
     }
     
     openDownloadsFolder() {
         // Try different methods to open the Downloads folder
         try {
-            // Method 1: Try to open file explorer to Downloads/ProUpscaler
-            const downloadsPath = 'file:///home/mranderson/Downloads/ProUpscaler';
+            // Use custom location if set, otherwise default
+            const locationPath = this.getDownloadLocationPath();
+            const downloadsPath = `file://${locationPath}`;
             window.open(downloadsPath, '_blank');
         } catch (error) {
             console.warn('Could not open Downloads folder directly:', error);
             
             // Method 2: Fallback - show instructions
+            const locationDisplay = this.getDownloadLocationDisplay();
             this.showNotification(
-                '📁 Please manually navigate to your Downloads/ProUpscaler folder to view your upscaled image.',
+                `📁 Please manually navigate to your ${locationDisplay} folder to view your upscaled image.`,
                 'info'
             );
+        }
+    }
+    
+    /**
+     * Validate custom filename input
+     */
+    validateCustomFilename() {
+        const input = document.getElementById('custom-filename');
+        const value = input.value.trim();
+        
+        // Remove error state first
+        input.classList.remove('error');
+        
+        if (value === '') {
+            // Empty is valid - will use auto-generated
+            this.updateEstimates();
+            return true;
+        }
+        
+        // Validate filename characters
+        const invalidChars = /[<>:"/\\|?*]/g;
+        if (invalidChars.test(value)) {
+            input.classList.add('error');
+            this.showNotification('Filename contains invalid characters: < > : " / \\ | ? *', 'error');
+            return false;
+        }
+        
+        // Check length
+        if (value.length > 200) {
+            input.classList.add('error');
+            this.showNotification('Filename too long (max 200 characters)', 'error');
+            return false;
+        }
+        
+        // Check for reserved names (Windows compatibility)
+        const reservedNames = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'];
+        if (reservedNames.includes(value.toUpperCase())) {
+            input.classList.add('error');
+            this.showNotification('Filename uses a reserved name', 'error');
+            return false;
+        }
+        
+        this.updateEstimates(); // Refresh preview with new filename
+        return true;
+    }
+    
+    /**
+     * Browse for download location
+     */
+    async browseDownloadLocation() {
+        try {
+            // Use File System Access API if available (modern browsers)
+            if ('showDirectoryPicker' in window) {
+                const dirHandle = await window.showDirectoryPicker();
+                const locationInput = document.getElementById('download-location');
+                
+                // Store the directory handle
+                this.customDownloadLocation = dirHandle;
+                locationInput.value = dirHandle.name;
+                
+                this.showNotification('📁 Download location updated', 'success');
+                this.updateEstimates();
+            } else {
+                // Fallback: Show modal with common locations
+                this.showLocationPickerModal();
+            }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                console.error('Error selecting directory:', error);
+                this.showNotification('Could not access directory picker', 'error');
+            }
+        }
+    }
+    
+    /**
+     * Show location picker modal for browsers without File System Access API
+     */
+    showLocationPickerModal() {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
+        modal.innerHTML = `
+            <div class="bg-card border border-border rounded-lg max-w-sm w-full p-4 space-y-3">
+                <div class="text-center">
+                    <h3 class="text-lg font-semibold mb-2">Select Download Location</h3>
+                    <p class="text-sm text-muted-foreground mb-3">Choose a common download location:</p>
+                </div>
+                
+                <div class="space-y-2">
+                    <button class="btn-secondary w-full text-sm" onclick="window.app.setDownloadLocation('Downloads/ProUpscaler'); this.parentElement.parentElement.parentElement.parentElement.remove()">
+                        📁 Downloads/ProUpscaler (Default)
+                    </button>
+                    <button class="btn-secondary w-full text-sm" onclick="window.app.setDownloadLocation('Downloads'); this.parentElement.parentElement.parentElement.parentElement.remove()">
+                        📁 Downloads
+                    </button>
+                    <button class="btn-secondary w-full text-sm" onclick="window.app.setDownloadLocation('Desktop'); this.parentElement.parentElement.parentElement.parentElement.remove()">
+                        📁 Desktop
+                    </button>
+                    <button class="btn-secondary w-full text-sm" onclick="window.app.setDownloadLocation('Documents/ProUpscaler'); this.parentElement.parentElement.parentElement.parentElement.remove()">
+                        📁 Documents/ProUpscaler
+                    </button>
+                </div>
+                
+                <button class="btn-ghost w-full text-sm" onclick="this.parentElement.parentElement.remove()">
+                    Cancel
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+    }
+    
+    /**
+     * Set download location from modal selection
+     */
+    setDownloadLocation(location) {
+        const locationInput = document.getElementById('download-location');
+        locationInput.value = location;
+        this.customDownloadLocation = location;
+        this.showNotification('📁 Download location updated', 'success');
+        this.updateEstimates();
+    }
+    
+    /**
+     * Get custom filename or generate default
+     */
+    getCustomFilename(sessionId, format, extension) {
+        const customName = document.getElementById('custom-filename')?.value.trim();
+        if (customName && this.validateCustomFilename()) {
+            return `${customName}.${extension}`;
+        }
+        // Fallback to current auto-generation
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        return `upscaled-${sessionId}-${timestamp}.${extension}`;
+    }
+    
+    /**
+     * Get download location path for file operations
+     */
+    getDownloadLocationPath() {
+        if (this.customDownloadLocation) {
+            if (typeof this.customDownloadLocation === 'string') {
+                return `/home/mranderson/${this.customDownloadLocation}`;
+            }
+            // For FileSystemDirectoryHandle, we'll need to use the API
+            return '/home/mranderson/Downloads/ProUpscaler'; // Fallback
+        }
+        return '/home/mranderson/Downloads/ProUpscaler';
+    }
+    
+    /**
+     * Get download location display name
+     */
+    getDownloadLocationDisplay() {
+        const locationInput = document.getElementById('download-location');
+        return locationInput?.value || 'Downloads/ProUpscaler';
+    }
+    
+    /**
+     * Get custom filename for API calls
+     */
+    getCustomFilenameForAPI() {
+        const input = document.getElementById('custom-filename');
+        const value = input?.value.trim();
+        return (value && this.validateCustomFilename()) ? value : null;
+    }
+    
+    /**
+     * Get custom location for API calls
+     */
+    getCustomLocationForAPI() {
+        if (this.customDownloadLocation && typeof this.customDownloadLocation === 'string') {
+            return this.customDownloadLocation;
+        }
+        return null;
+    }
+    
+    /**
+     * Update filename preview in Output Preview card
+     */
+    updateFilenamePreview(format = 'png') {
+        const previewEl = document.getElementById('preview-filename');
+        if (!previewEl) return;
+        
+        const customName = document.getElementById('custom-filename')?.value.trim();
+        
+        if (customName && this.validateCustomFilename()) {
+            // Show custom filename with extension
+            const extension = this.getExtensionForFormat(format);
+            const filename = customName.endsWith(`.${extension}`) ? customName : `${customName}.${extension}`;
+            previewEl.textContent = filename;
+            previewEl.title = `Custom filename: ${filename}`;
+        } else {
+            // Show auto-generated preview
+            previewEl.textContent = 'Auto-generated';
+            previewEl.title = 'Filename will be automatically generated based on timestamp and session ID';
+        }
+    }
+    
+    /**
+     * Get file extension for format
+     */
+    getExtensionForFormat(format) {
+        switch (format.toLowerCase()) {
+            case 'jpeg': return 'jpg';
+            case 'webp': return 'webp';
+            case 'png':
+            default: return 'png';
         }
     }
 }

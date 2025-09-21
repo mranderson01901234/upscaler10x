@@ -11,33 +11,6 @@
 </head>
 <body class="bg-background text-foreground antialiased">
     <div class="app-container">
-        <!-- Header -->
-        <header class="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
-            <div class="container mx-auto px-6 py-3">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-2">
-                        <div class="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                            <svg class="h-5 w-5 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                            </svg>
-                        </div>
-                        <h1 class="text-xl font-semibold">Pro Upscaler</h1>
-                    </div>
-                    
-                    <div class="flex items-center space-x-4">
-                        <div class="pro-status flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium" id="pro-status">
-                            <div class="h-2 w-2 rounded-full bg-emerald-500"></div>
-                            <span class="text-muted-foreground">Free Plan</span>
-                        </div>
-                        <button class="btn-ghost" id="theme-toggle">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </header>
 
         <!-- Main Content - Full Viewport Single Pane -->
         <main class="flex-1 flex h-full overflow-hidden">
@@ -113,8 +86,8 @@
                 </div>
                 
                 <!-- Main canvas content area - Full height -->
-                <div class="flex-1 flex flex-col h-full p-4">
-                    <!-- Upload/Preview Area -->
+                <div class="flex-1 flex flex-col h-full p-3">
+                    <!-- Upload/Preview Area - Takes most available height -->
                     <div class="flex-1 flex items-center justify-center min-h-0">
                         <div class="w-full h-full">
                             <!-- Upload Area (when no image) -->
@@ -136,7 +109,7 @@
                                             Choose Image
                                         </button>
                                     </div>
-                                    <p class="text-xs text-muted-foreground">Supports PNG, JPEG, WebP, TIFF up to 1GB</p>
+                                    <p class="text-xs text-muted-foreground">Supports PNG, JPEG, WebP, TIFF up to 1.5GB</p>
                                 </div>
                             </div>
                             
@@ -148,6 +121,8 @@
                             </div>
                         </div>
                     </div>
+                    
+
                 </div>
             </div>
 
@@ -156,31 +131,31 @@
                 <!-- Sidebar Content - Fixed Height -->
                 <div class="p-4 sidebar-content flex flex-col h-full">
                     
-                    <!-- Image Details Card - Compact -->
-                    <div class="card compact-card" id="image-details-card">
-                        <div class="card-header compact-header">
-                            <h3 class="card-title text-sm font-semibold">Image Details</h3>
+                    <!-- Image Details Card - Extra Compact -->
+                    <div class="card compact-card image-details-mini" id="image-details-card">
+                        <div class="card-header compact-header-mini">
+                            <h3 class="card-title text-xs font-semibold">Image Details</h3>
                         </div>
-                        <div class="card-content compact-content">
-                            <div id="no-image-state" class="text-center py-4">
-                                <svg class="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="card-content compact-content-mini">
+                            <div id="no-image-state" class="text-center py-1">
+                                <svg class="h-4 w-4 mx-auto mb-1 text-muted-foreground opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                 </svg>
                                 <p class="text-xs text-muted-foreground">Upload an image to see details</p>
                             </div>
                             
                             <div id="image-info-state" class="hidden">
-                                <div class="grid grid-cols-3 gap-2 text-xs">
-                                    <div class="text-center p-2 bg-muted/50 rounded">
-                                        <div class="text-muted-foreground mb-1">Size</div>
+                                <div class="grid grid-cols-3 gap-1 text-xxs">
+                                    <div class="text-center p-1 bg-muted/50 rounded">
+                                        <div class="text-muted-foreground">Size</div>
                                         <div class="font-medium" id="image-dimensions">-</div>
                                     </div>
-                                    <div class="text-center p-2 bg-muted/50 rounded">
-                                        <div class="text-muted-foreground mb-1">File</div>
+                                    <div class="text-center p-1 bg-muted/50 rounded">
+                                        <div class="text-muted-foreground">File</div>
                                         <div class="font-medium" id="image-size">-</div>
                                     </div>
-                                    <div class="text-center p-2 bg-muted/50 rounded">
-                                        <div class="text-muted-foreground mb-1">Format</div>
+                                    <div class="text-center p-1 bg-muted/50 rounded">
+                                        <div class="text-muted-foreground">Format</div>
                                         <div class="font-medium" id="image-format">-</div>
                                     </div>
                                 </div>
@@ -191,11 +166,11 @@
                     <!-- Settings Card - Compact -->
                     <div class="card compact-card">
                         <div class="card-header compact-header">
-                            <h3 class="card-title text-sm font-semibold">Settings</h3>
+                            <h3 class="card-title text-xs font-semibold">Settings</h3>
                         </div>
-                        <div class="card-content compact-content space-y-3">
+                        <div class="card-content compact-content space-y-2">
                             <div class="form-group">
-                                <label class="form-label text-xs" for="scale-factor">Scale Factor</label>
+                                <label class="form-label text-xxs" for="scale-factor">Scale Factor</label>
                                 <select id="scale-factor" class="select compact-select">
                                     <option value="2">2× (Double Size)</option>
                                     <option value="4">4× (Quadruple Size)</option>
@@ -208,7 +183,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label class="form-label text-xs" for="output-format">Output Format</label>
+                                <label class="form-label text-xxs" for="output-format">Output Format</label>
                                 <select id="output-format" class="select compact-select">
                                     <option value="png" selected>PNG (Best Quality)</option>
                                     <option value="jpeg">JPEG (Balanced)</option>
@@ -217,7 +192,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label class="form-label text-xs" for="processing-mode">Processing Mode</label>
+                                <label class="form-label text-xxs" for="processing-mode">Processing Mode</label>
                                 <select id="processing-mode" class="select compact-select">
                                     <option value="speed" selected>Speed (Ultra-Fast)</option>
                                     <option value="balanced">Balanced</option>
@@ -225,8 +200,22 @@
                                 </select>
                             </div>
 
+                            <!-- AI Enhancement Toggle -->
+                            <div class="form-group">
+                                <div class="flex items-center justify-between">
+                                    <label class="form-label text-xxs">AI Face Enhancement</label>
+                                    <div class="flex items-center space-x-2">
+                                        <input type="checkbox" id="ai-enhancement-toggle" checked class="checkbox compact-checkbox">
+                                        <span class="text-xxs text-muted-foreground">+4-8s</span>
+                                    </div>
+                                </div>
+                                <p class="text-xxs text-muted-foreground mt-1">
+                                    🤖 Enhances faces in portrait images using CodeFormer AI
+                                </p>
+                            </div>
+
                             <div class="form-group hidden" id="quality-control">
-                                <label class="form-label text-xs" for="quality-slider">
+                                <label class="form-label text-xxs" for="quality-slider">
                                     Quality: <span id="quality-value" class="font-medium">95</span>
                                 </label>
                                 <input type="range" id="quality-slider" min="1" max="100" value="95" class="slider compact-slider">
@@ -234,13 +223,46 @@
                         </div>
                     </div>
 
+                    <!-- File Settings Card - Compact -->
+                    <div class="card compact-card">
+                        <div class="card-header compact-header">
+                            <h3 class="card-title text-xs font-semibold">File Settings</h3>
+                        </div>
+                        <div class="card-content compact-content space-y-2">
+                            <!-- Custom Filename -->
+                            <div class="form-group">
+                                <label class="form-label text-xxs" for="custom-filename">Custom Filename</label>
+                                <input type="text" id="custom-filename" class="input compact-input" 
+                                       placeholder="Leave blank for auto-generated">
+                                <p class="text-xxs text-muted-foreground" style="margin-top: 0.125rem;">
+                                    Extension added automatically
+                                </p>
+                            </div>
+
+                            <!-- Download Location -->
+                            <div class="form-group">
+                                <label class="form-label text-xxs" for="download-location">Download Location</label>
+                                <div class="flex space-x-1">
+                                    <input type="text" id="download-location" class="input compact-input flex-1" 
+                                           value="Downloads/ProUpscaler" readonly>
+                                    <button class="btn-secondary compact-btn px-2" id="browse-location" title="Browse for folder">
+                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2V7z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Output Preview - Compact -->
                     <div class="card compact-card">
                         <div class="card-header compact-header">
-                            <h3 class="card-title text-sm font-semibold">Output Preview</h3>
+                            <h3 class="card-title text-xs font-semibold">Output Preview</h3>
                         </div>
                         <div class="card-content compact-content">
-                            <div class="space-y-2 text-xs">
+                            <div class="space-y-1 text-xxs">
                                 <div class="flex justify-between">
                                     <span class="text-muted-foreground">Size:</span>
                                     <span class="font-medium" id="output-dimensions">-</span>
@@ -253,101 +275,57 @@
                                     <span class="text-muted-foreground">Time:</span>
                                     <span class="font-medium" id="estimated-time">-</span>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Status Card - Compact -->
-                    <div class="card compact-card flex-1">
-                        <div class="card-header compact-header">
-                            <h3 class="card-title text-sm font-semibold">Status</h3>
-                        </div>
-                        <div class="card-content compact-content flex-1 flex flex-col">
-                            <!-- Progress View -->
-                            <div id="progress-view" class="hidden space-y-3 flex-1">
-                                <div class="flex items-center space-x-2">
-                                    <div class="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
-                                    <div>
-                                        <div class="font-medium text-xs">Processing Image</div>
-                                        <div class="text-xs text-muted-foreground" id="progress-text">Initializing...</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="space-y-2">
-                                    <div class="progress-bar compact-progress">
-                                        <div class="progress-fill" id="progress-fill"></div>
-                                    </div>
-                                    <div class="flex justify-between text-xs text-muted-foreground">
-                                        <span id="progress-percent">0%</span>
-                                        <span id="remaining-time">~5s</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="grid grid-cols-2 gap-2 text-xs">
-                                    <div class="text-center p-1.5 bg-muted/50 rounded text-xs">
-                                        <div class="text-muted-foreground">Elapsed</div>
-                                        <div class="font-medium" id="elapsed-time">0s</div>
-                                    </div>
-                                    <div class="text-center p-1.5 bg-muted/50 rounded text-xs">
-                                        <div class="text-muted-foreground">Remaining</div>
-                                        <div class="font-medium" id="total-time">5s</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Idle State -->
-                            <div id="idle-state" class="text-center text-muted-foreground py-4 flex-1 flex flex-col justify-center">
-                                <svg class="h-6 w-6 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                <p class="text-xs">Ready to process</p>
-                            </div>
-                            
-                            <!-- Complete State -->
-                            <div id="complete-state" class="hidden space-y-3">
-                                <div class="flex items-center space-x-2">
-                                    <div class="h-4 w-4 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                                        <svg class="h-3 w-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <div class="font-medium text-emerald-500 text-xs">Complete!</div>
-                                        <div class="text-xs text-muted-foreground">See results on left</div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Downloaded Filename Display -->
-                                <div id="downloaded-filename-display" class="hidden bg-muted/30 rounded-lg p-3">
-                                    <div class="flex items-center space-x-2 mb-2">
-                                        <svg class="h-3 w-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-4-4m4 4l4-4"/>
-                                        </svg>
-                                        <span class="text-xs font-medium text-emerald-500">Downloaded</span>
-                                    </div>
-                                    <div class="text-xs text-muted-foreground break-all" id="downloaded-filename-text">
-                                        filename.png
-                                    </div>
-                                    <div class="text-xs text-muted-foreground mt-1">
-                                        <span>Saved to: </span><span class="font-mono" id="download-location">Downloads/ProUpscaler/</span>
-                                    </div>
+                                <div class="flex justify-between">
+                                    <span class="text-muted-foreground">Filename:</span>
+                                    <span class="font-medium text-xxs break-all" id="preview-filename">Auto-generated</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Action Buttons - Fixed at bottom -->
-                <div class="p-4 border-t border-border bg-card/50 mt-auto">
-                    <button class="btn-primary w-full compact-btn" id="start-processing" disabled>
-                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                        </svg>
-                        Start Upscaling
-                    </button>
+                    <!-- Action Button - Always Visible and Sticky -->
+                    <div class="sticky-action-button">
+                        <button class="btn-primary w-full px-6 py-3" id="start-processing" disabled>
+                            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            Start Upscaling
+                        </button>
+                    </div>
+
                 </div>
             </div>
         </main>
+
+        <!-- Progress Footer - Fixed at bottom, always visible -->
+        <footer class="progress-footer" id="progress-footer">
+            <div class="progress-footer-content">
+                <div class="flex items-center space-x-4">
+                    <!-- Status Section -->
+                    <div class="flex-1">
+                        <!-- Progress View -->
+                        <div id="progress-view-footer">
+                            <div class="flex items-center space-x-3">
+                                <div class="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+                                <div class="flex-1">
+                                    <div class="font-medium text-sm">Processing Image</div>
+                                    <div class="text-sm text-muted-foreground" id="progress-text">Initializing...</div>
+                                </div>
+                                <div class="text-sm font-medium" id="progress-percent">0%</div>
+                                <div class="text-sm text-muted-foreground" id="remaining-time">~5s</div>
+                            </div>
+                            
+                            <div class="mt-1">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="progress-fill"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+
     </div>
 
     <!-- Scripts -->
