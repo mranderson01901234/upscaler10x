@@ -108,6 +108,19 @@ class ImageProcessor {
                     mozjpeg: true          // Use mozjpeg if available
                 }
             };
+        } else if (outputSettings.format === 'tiff') {
+            // Final TIFF: High-quality settings
+            return {
+                format: 'tiff',
+                options: {
+                    ...outputSettings.options,
+                    compression: 'lzw',     // Efficient lossless compression
+                    quality: 95,            // High quality
+                    predictor: 'horizontal', // Better compression for natural images
+                    tile: false,            // Don't use tiled format for compatibility
+                    pyramid: false          // Don't use pyramid format
+                }
+            };
         } else {
             // Final PNG: Balanced settings
             return {
@@ -171,6 +184,10 @@ class ImageProcessor {
                 if (streamOptions.format === 'jpeg') {
                     currentBuffer = await sharpInstance
                         .jpeg(streamOptions.options)
+                        .toBuffer();
+                } else if (streamOptions.format === 'tiff') {
+                    currentBuffer = await sharpInstance
+                        .tiff(streamOptions.options)
                         .toBuffer();
                 } else {
                     currentBuffer = await sharpInstance
@@ -238,7 +255,22 @@ class ImageProcessor {
     getOptimalOutputSettings(targetPixels, originalFormat) {
         let outputSettings;
         
-        if (targetPixels > 300000000) {
+        // If original format is TIFF and high quality is needed, preserve TIFF for professional workflows
+        if (originalFormat && (originalFormat.toLowerCase().includes('tiff') || originalFormat.toLowerCase().includes('tif')) && targetPixels <= 200000000) {
+            outputSettings = {
+                format: 'tiff',
+                options: {
+                    compression: 'lzw',
+                    quality: 95,
+                    predictor: 'horizontal',
+                    tile: false,
+                    pyramid: false
+                },
+                extension: 'tiff'
+            };
+            console.log(`📁 TIFF preservation (${(targetPixels/1000000).toFixed(0)}MP): High-quality TIFF format`);
+            
+        } else if (targetPixels > 300000000) {
             outputSettings = {
                 format: 'jpeg',
                 options: {
@@ -277,7 +309,7 @@ class ImageProcessor {
             console.log(`📁 Standard image (${(targetPixels/1000000).toFixed(0)}MP): High-quality PNG format`);
         }
         
-        console.log(`⚙️ Output settings: ${outputSettings.format.toUpperCase()} - Quality: ${outputSettings.options.quality}`);
+        console.log(`⚙️ Output settings: ${outputSettings.format.toUpperCase()} - Quality: ${outputSettings.options.quality || 'N/A'}`);
         return outputSettings;
     }
     

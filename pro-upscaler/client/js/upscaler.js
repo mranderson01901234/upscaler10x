@@ -382,7 +382,9 @@ class UltraFastUpscaler {
       'png': 'image/png',
       'jpeg': 'image/jpeg',
       'jpg': 'image/jpeg',
-      'webp': 'image/webp'
+      'webp': 'image/webp',
+      'tiff': 'image/tiff',
+      'tif': 'image/tiff'
     };
     return mimeTypes[format] || 'image/png';
   }

@@ -85,7 +85,7 @@ class ProUpscalerApp {
     
     async processFile(file) {
         if (!this.fileHandler.validateFile(file)) {
-            this.showNotification('Please select a valid image file (PNG, JPEG, WebP)', 'error');
+            this.showNotification('Please select a valid image file (PNG, JPEG, WebP, TIFF)', 'error');
             return;
         }
         

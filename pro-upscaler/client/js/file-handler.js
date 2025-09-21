@@ -1,6 +1,6 @@
 class FileHandler {
     constructor() {
-        this.supportedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+        this.supportedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/tiff', 'image/tif'];
         this.maxFileSize = 100 * 1024 * 1024; // 100MB
     }
     
