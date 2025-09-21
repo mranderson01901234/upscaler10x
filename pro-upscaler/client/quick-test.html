@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Processing Time Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #222; color: #fff; }
+        button { background: #0066cc; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .log { background: #333; padding: 10px; border-radius: 4px; height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; white-space: pre-wrap; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Processing Time Fix Test</h1>
+    <p>This test verifies that the processingTime error is fixed.</p>
+    
+    <button onclick="testSmallUpscale()">Test Small Image (2x)</button>
+    <button onclick="testLargeUpscale()">Test Large Image (10x - should trigger chunked)</button>
+    <button onclick="clearLog()">Clear Log</button>
+    
+    <div class="log" id="log"></div>
+    
+    <script src="js/upscaler.js"></script>
+    <script>
+        let upscaler;
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.textContent += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+        
+        // Initialize upscaler
+        try {
+            upscaler = new UltraFastUpscaler({ qualityMode: 'speed' });
+            log('✅ Ultra-Fast Upscaler initialized successfully');
+        } catch (error) {
+            log('❌ Failed to initialize upscaler: ' + error.message);
+        }
+        
+        // Create test image data
+        function createTestImageData(width, height) {
+            const data = new Uint8ClampedArray(width * height * 4);
+            
+            // Create a simple gradient pattern
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const index = (y * width + x) * 4;
+                    data[index] = (x / width) * 255;     // Red gradient
+                    data[index + 1] = (y / height) * 255; // Green gradient
+                    data[index + 2] = 128;                // Blue constant
+                    data[index + 3] = 255;                // Alpha
+                }
+            }
+            
+            return { width, height, data };
+        }
+        
+        async function testSmallUpscale() {
+            if (!upscaler) {
+                log('❌ Upscaler not initialized');
+                return;
+            }
+            
+            log('🚀 Testing small image upscaling (should use regular processing)...');
+            
+            const testImage = createTestImageData(100, 100);
+            log(`📁 Created test image: ${testImage.width}×${testImage.height}`);
+            
+            try {
+                const result = await upscaler.upscaleImage(
+                    testImage, 
+                    2, 
+                    'png', 
+                    95, 
+                    (progress, message) => {
+                        log(`📊 ${progress.toFixed(1)}% - ${message}`);
+                    }
+                );
+                
+                log(`✅ Small upscale SUCCESS!`);
+                log(`   Output: ${result.width}×${result.height}`);
+                log(`   Processing Time: ${result.processingTime ? result.processingTime.toFixed(2) + 'ms' : 'Not available'}`);
+                log(`   Has Canvas: ${!!result.canvas}`);
+                log(`   Is Chunked: ${!!result.isChunked}`);
+                log(`   Blob Size: ${result.size ? (result.size / 1024).toFixed(1) + 'KB' : 'Not available'}`);
+                
+            } catch (error) {
+                log(`❌ Small upscale FAILED: ${error.message}`);
+                log(`   Stack: ${error.stack}`);
+            }
+        }
+        
+        async function testLargeUpscale() {
+            if (!upscaler) {
+                log('❌ Upscaler not initialized');
+                return;
+            }
+            
+            log('🚀 Testing large image upscaling (should trigger chunked processing)...');
+            
+            const testImage = createTestImageData(4000, 3000);
+            log(`📁 Created large test image: ${testImage.width}×${testImage.height}`);
+            
+            try {
+                const result = await upscaler.upscaleImage(
+                    testImage, 
+                    10, 
+                    'png', 
+                    95, 
+                    (progress, message) => {
+                        log(`📊 ${progress.toFixed(1)}% - ${message}`);
+                    }
+                );
+                
+                log(`✅ Large upscale SUCCESS!`);
+                log(`   Output: ${result.width}×${result.height}`);
+                log(`   Processing Time: ${result.processingTime ? result.processingTime.toFixed(2) + 'ms' : 'Not available'}`);
+                log(`   Is Chunked: ${!!result.isChunked}`);
+                log(`   Has Chunked Data: ${!!result.chunkedData}`);
+                log(`   Has Canvas: ${!!result.canvas}`);
+                log(`   Blob Size: ${result.size ? (result.size / 1024).toFixed(1) + 'KB' : 'Virtual (chunked)'}`);
+                
+            } catch (error) {
+                log(`❌ Large upscale FAILED: ${error.message}`);
+                log(`   Stack: ${error.stack}`);
+            }
+        }
+        
+        log('🔧 Quick test page ready');
+        log('📝 Click buttons above to test the processingTime fix');
+    </script>
+</body>
+</html> 

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultra-Fast Upscaler Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #2a2a2a;
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0052a3;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #0066cc;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .result-canvas {
+            max-width: 100%;
+            border: 1px solid #555;
+            margin: 10px 0;
+        }
+        .stats {
+            background: #333;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .log {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 4px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Ultra-Fast Progressive Upscaler Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Image Upload</h2>
+        <input type="file" id="imageInput" accept="image/*">
+        <div id="originalImage"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Progressive Upscaling Tests</h2>
+        <div>
+            <button onclick="testUpscaling(2)">Test 2x Upscaling</button>
+            <button onclick="testUpscaling(4)">Test 4x Upscaling</button>
+            <button onclick="testUpscaling(6)">Test 6x Upscaling</button>
+            <button onclick="testUpscaling(8)">Test 8x Upscaling</button>
+            <button onclick="testUpscaling(10)">Test 10x Upscaling</button>
+            <button onclick="testUpscaling(12)">Test 12x Upscaling</button>
+            <button onclick="testUpscaling(15)">Test 15x Upscaling</button>
+        </div>
+        
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div id="progressText">Ready</div>
+        
+        <div class="stats" id="stats">No test run yet</div>
+        
+        <canvas id="resultCanvas" class="result-canvas" style="display: none;"></canvas>
+    </div>
+
+    <div class="test-section">
+        <h2>Canvas Limit Tests</h2>
+        <div>
+            <button onclick="testCanvasLimits()">Test Canvas Limits (Large Image)</button>
+            <button onclick="testChunkedResult()">Test Chunked Result Handling</button>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Performance Benchmarks</h2>
+        <div>
+            <button onclick="runBenchmarks()">Run Performance Benchmarks</button>
+        </div>
+        <div id="benchmarkResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>System Log</h2>
+        <div class="log" id="systemLog"></div>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <!-- Include the upscaler -->
+    <script src="js/upscaler.js"></script>
+    
+    <script>
+        let currentImageData = null;
+        let upscaler = null;
+
+        // Initialize upscaler
+        try {
+            upscaler = new UltraFastUpscaler({ qualityMode: 'speed' });
+            log('✅ Ultra-Fast Upscaler initialized');
+        } catch (error) {
+            log('❌ Failed to initialize upscaler: ' + error.message);
+        }
+
+        // Image upload handler
+        document.getElementById('imageInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                try {
+                    currentImageData = await loadImageData(file);
+                    displayOriginalImage(currentImageData);
+                    log(`📁 Loaded image: ${currentImageData.width}×${currentImageData.height}`);
+                } catch (error) {
+                    log('❌ Failed to load image: ' + error.message);
+                }
+            }
+        });
+
+        // Load image data from file
+        async function loadImageData(file) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        const imageData = ctx.getImageData(0, 0, img.width, img.height);
+                        
+                        resolve({
+                            width: img.width,
+                            height: img.height,
+                            data: imageData.data,
+                            dataUrl: e.target.result
+                        });
+                    };
+                    img.onerror = () => reject(new Error('Failed to load image'));
+                    img.src = e.target.result;
+                };
+                reader.onerror = () => reject(new Error('Failed to read file'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Display original image
+        function displayOriginalImage(imageData) {
+            const container = document.getElementById('originalImage');
+            container.innerHTML = `
+                <div>
+                    <strong>Original:</strong> ${imageData.width}×${imageData.height} 
+                    (${(imageData.width * imageData.height / 1000000).toFixed(1)}MP)
+                </div>
+                <img src="${imageData.dataUrl}" style="max-width: 300px; max-height: 200px; border: 1px solid #555;">
+            `;
+        }
+
+        // Test upscaling
+        async function testUpscaling(scaleFactor) {
+            if (!currentImageData) {
+                log('❌ Please upload an image first');
+                return;
+            }
+
+            if (!upscaler) {
+                log('❌ Upscaler not initialized');
+                return;
+            }
+
+            const startTime = performance.now();
+            const targetWidth = currentImageData.width * scaleFactor;
+            const targetHeight = currentImageData.height * scaleFactor;
+            
+            log(`🚀 Starting ${scaleFactor}x upscaling: ${currentImageData.width}×${currentImageData.height} → ${targetWidth}×${targetHeight}`);
+            
+            try {
+                const result = await upscaler.upscale(currentImageData, scaleFactor, (progress, message) => {
+                    updateProgress(progress, message);
+                });
+                
+                const totalTime = performance.now() - startTime;
+                
+                // Display results
+                displayResult(result, scaleFactor, totalTime);
+                
+                log(`✅ Upscaling complete in ${totalTime.toFixed(2)}ms`);
+                
+            } catch (error) {
+                log(`❌ Upscaling failed: ${error.message}`);
+                updateProgress(0, 'Failed');
+            }
+        }
+
+        // Update progress
+        function updateProgress(percent, message) {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            progressBar.style.width = percent + '%';
+            progressText.textContent = `${Math.round(percent)}% - ${message}`;
+        }
+
+        // Display result
+        function displayResult(result, scaleFactor, processingTime) {
+            const canvas = document.getElementById('resultCanvas');
+            const stats = document.getElementById('stats');
+            
+            if (result.chunkedData) {
+                // Chunked result
+                canvas.style.display = 'none';
+                stats.innerHTML = `
+                    <strong>🎯 CHUNKED RESULT:</strong><br>
+                    Dimensions: ${result.chunkedData.width}×${result.chunkedData.height}<br>
+                    Scale Factor: ${scaleFactor}x<br>
+                    Processing Time: ${processingTime.toFixed(2)}ms<br>
+                    Megapixels: ${(result.chunkedData.width * result.chunkedData.height / 1000000).toFixed(1)}MP<br>
+                    Type: Virtual Canvas (Exceeds Browser Limits)<br>
+                    Status: ✅ Successfully handled large image
+                `;
+            } else if (result.canvas) {
+                // Regular result
+                const ctx = canvas.getContext('2d');
+                canvas.width = Math.min(result.canvas.width, 800);
+                canvas.height = Math.min(result.canvas.height, 600);
+                ctx.drawImage(result.canvas, 0, 0, canvas.width, canvas.height);
+                canvas.style.display = 'block';
+                
+                stats.innerHTML = `
+                    <strong>🎯 UPSCALING RESULT:</strong><br>
+                    Dimensions: ${result.width}×${result.height}<br>
+                    Scale Factor: ${scaleFactor}x<br>
+                    Processing Time: ${processingTime.toFixed(2)}ms<br>
+                    Speed: ${(result.width * result.height / processingTime * 1000 / 1000000).toFixed(1)} MP/s<br>
+                    Megapixels: ${(result.width * result.height / 1000000).toFixed(1)}MP<br>
+                    Type: Standard Canvas<br>
+                    Status: ✅ Success
+                `;
+            }
+        }
+
+        // Test canvas limits
+        async function testCanvasLimits() {
+            log('🧪 Testing canvas limits...');
+            
+            // Create a test image that would exceed canvas limits when upscaled
+            const testImageData = {
+                width: 4000,
+                height: 3000,
+                data: new Uint8ClampedArray(4000 * 3000 * 4).fill(128) // Gray image
+            };
+            
+            try {
+                const result = await upscaler.upscale(testImageData, 10, (progress, message) => {
+                    updateProgress(progress, message);
+                    log(`📊 ${progress.toFixed(1)}% - ${message}`);
+                });
+                
+                if (result.chunkedData) {
+                    log('✅ Canvas limit bypass working! Created chunked result.');
+                    log(`📦 Virtual canvas: ${result.chunkedData.width}×${result.chunkedData.height}`);
+                } else {
+                    log('⚠️ Expected chunked result but got regular result');
+                }
+                
+            } catch (error) {
+                log(`❌ Canvas limit test failed: ${error.message}`);
+            }
+        }
+
+        // Test chunked result handling
+        function testChunkedResult() {
+            log('🧪 Testing chunked result handling...');
+            
+            // Create a mock chunked result
+            const chunkedData = {
+                width: 40000,
+                height: 30000,
+                tiles: [],
+                isChunked: true,
+                totalPixels: 40000 * 30000,
+                exceedsLimits: true
+            };
+            
+            displayResult({ chunkedData }, 10, 1500);
+            log('✅ Chunked result display test complete');
+        }
+
+        // Run benchmarks
+        async function runBenchmarks() {
+            if (!currentImageData) {
+                log('❌ Please upload an image first');
+                return;
+            }
+
+            log('🏁 Starting performance benchmarks...');
+            const results = document.getElementById('benchmarkResults');
+            results.innerHTML = '<h3>Running benchmarks...</h3>';
+            
+            const benchmarks = [];
+            const scaleFactors = [2, 4, 6, 8];
+            
+            for (const scale of scaleFactors) {
+                const startTime = performance.now();
+                
+                try {
+                    const result = await upscaler.upscale(currentImageData, scale, (progress, message) => {
+                        // Silent progress for benchmarks
+                    });
+                    
+                    const endTime = performance.now();
+                    const processingTime = endTime - startTime;
+                    const outputPixels = (result.chunkedData ? 
+                        result.chunkedData.width * result.chunkedData.height : 
+                        result.width * result.height);
+                    const speed = outputPixels / processingTime * 1000 / 1000000; // MP/s
+                    
+                    benchmarks.push({
+                        scale,
+                        time: processingTime,
+                        speed,
+                        pixels: outputPixels,
+                        chunked: !!result.chunkedData
+                    });
+                    
+                    log(`📊 ${scale}x: ${processingTime.toFixed(2)}ms (${speed.toFixed(1)} MP/s) ${result.chunkedData ? '[CHUNKED]' : '[STANDARD]'}`);
+                    
+                } catch (error) {
+                    log(`❌ ${scale}x benchmark failed: ${error.message}`);
+                }
+            }
+            
+            // Display benchmark results
+            let html = '<h3>🏁 Benchmark Results</h3><table style="width:100%; border-collapse: collapse;">';
+            html += '<tr style="background: #333;"><th>Scale</th><th>Time (ms)</th><th>Speed (MP/s)</th><th>Output Pixels</th><th>Type</th></tr>';
+            
+            benchmarks.forEach(b => {
+                html += `<tr style="border-bottom: 1px solid #555;">
+                    <td>${b.scale}x</td>
+                    <td>${b.time.toFixed(2)}</td>
+                    <td>${b.speed.toFixed(1)}</td>
+                    <td>${(b.pixels / 1000000).toFixed(1)}MP</td>
+                    <td>${b.chunked ? 'Chunked' : 'Standard'}</td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            results.innerHTML = html;
+            
+            log('✅ All benchmarks complete!');
+        }
+
+        // Logging
+        function log(message) {
+            const logDiv = document.getElementById('systemLog');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.textContent += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('systemLog').textContent = '';
+        }
+
+        // Initialize
+        log('🚀 Ultra-Fast Upscaler Test Page Ready');
+        log('📝 Upload an image to start testing');
+    </script>
+</body>
+</html> 

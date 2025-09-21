@@ -1,0 +1,32 @@
+{
+    "name": "pro-engine-desktop-service",
+    "version": "1.0.0",
+    "description": "Pro Engine Desktop Service for high-performance image upscaling",
+    "main": "server.js",
+    "scripts": {
+        "start": "node --expose-gc server.js",
+        "dev": "nodemon --expose-gc server.js",
+        "test": "echo \"No tests yet\" && exit 0",
+        "install-service": "node install-service.js",
+        "uninstall-service": "node uninstall-service.js"
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "cors": "^2.8.5",
+        "sharp": "^0.32.6"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.2"
+    },
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "keywords": [
+        "image-processing",
+        "upscaling",
+        "desktop-service",
+        "sharp"
+    ],
+    "author": "Pro Upscaler Team",
+    "license": "MIT"
+} 

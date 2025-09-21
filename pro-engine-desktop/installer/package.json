@@ -1,0 +1,40 @@
+{
+    "name": "pro-engine-installer",
+    "version": "1.0.0",
+    "description": "Pro Engine Desktop Service Installer",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "build": "electron-builder",
+        "dist": "electron-builder --publish=never"
+    },
+    "dependencies": {
+        "electron": "^27.1.0"
+    },
+    "devDependencies": {
+        "electron-builder": "^24.6.4"
+    },
+    "build": {
+        "appId": "com.proupscaler.engine",
+        "productName": "Pro Engine Installer",
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "main.js",
+            "../service/**/*"
+        ],
+        "win": {
+            "target": "nsis",
+            "icon": "icon.ico"
+        },
+        "mac": {
+            "target": "dmg",
+            "icon": "icon.icns"
+        },
+        "linux": {
+            "target": "AppImage",
+            "icon": "icon.png"
+        }
+    }
+} 

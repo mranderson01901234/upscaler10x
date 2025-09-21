@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connection Test - Pro Engine Desktop</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #logs { background: #f8f9fa; padding: 15px; height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+        input[type="file"] { margin: 10px 0; }
+        input[type="number"] { width: 80px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Pro Engine Desktop Service - Connection Test</h1>
+        
+        <div id="connection-status" class="status info">
+            Testing connection to optimized desktop service...
+        </div>
+        
+        <div style="margin: 20px 0;">
+            <h3>Quick Image Processing Test</h3>
+            <input type="file" id="imageInput" accept="image/*">
+            Scale Factor: <input type="number" id="scaleFactor" value="2" min="1" max="15" step="0.5">
+            <button onclick="testProcessing()">Test Multi-Threading</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+        
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        const DESKTOP_SERVICE_URL = 'http://localhost:3004';
+        
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#6c757d';
+            logs.innerHTML += `<div style="color: ${color}; margin: 2px 0;">[${timestamp}] ${message}</div>`;
+            logs.scrollTop = logs.scrollHeight;
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+        
+        async function testConnection() {
+            const statusDiv = document.getElementById('connection-status');
+            
+            try {
+                const response = await fetch(`${DESKTOP_SERVICE_URL}/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = `✅ Connected to ${data.service} - ${data.capabilities.cpu.cores} cores, Multi-threading ACTIVE`;
+                    log(`✅ Desktop service connected: ${data.capabilities.cpu.cores} cores available`, 'success');
+                    return true;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `❌ Connection failed: ${error.message}`;
+                log(`❌ Connection failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function testProcessing() {
+            const fileInput = document.getElementById('imageInput');
+            const scaleFactor = parseFloat(document.getElementById('scaleFactor').value);
+            
+            if (!fileInput.files[0]) {
+                log('❌ Please select an image file first', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            log(`🚀 Testing multi-threading with ${file.name} (scale: ${scaleFactor}x)`, 'info');
+            
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const sessionId = `test-${Date.now()}`;
+                
+                try {
+                    log('📤 Sending to optimized engine...', 'info');
+                    
+                    const response = await fetch(`${DESKTOP_SERVICE_URL}/api/process-large`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sessionId: sessionId,
+                            imageData: e.target.result,
+                            scaleFactor: scaleFactor,
+                            format: 'png',
+                            quality: 95
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    log(`✅ Processing started: ${result.message}`, 'success');
+                    
+                    // Monitor progress with real-time updates
+                    const eventSource = new EventSource(`${DESKTOP_SERVICE_URL}/api/progress/${sessionId}`);
+                    
+                    eventSource.onmessage = (event) => {
+                        try {
+                            const progress = JSON.parse(event.data);
+                            
+                            if (progress.status === 'complete') {
+                                eventSource.close();
+                                log(`🎉 Multi-threading test completed! File saved to Downloads/ProUpscaler`, 'success');
+                            } else if (progress.status === 'error') {
+                                eventSource.close();
+                                log(`❌ Processing failed: ${progress.message}`, 'error');
+                            } else {
+                                const progressPercent = progress.progress || 0;
+                                const message = progress.message || 'Processing...';
+                                log(`📈 ${progressPercent}% - ${message}`, 'info');
+                            }
+                        } catch (error) {
+                            log(`❌ Progress error: ${error.message}`, 'error');
+                        }
+                    };
+                    
+                    eventSource.onerror = () => {
+                        eventSource.close();
+                        log('❌ Connection lost to progress stream', 'error');
+                    };
+                    
+                } catch (error) {
+                    log(`❌ Test failed: ${error.message}`, 'error');
+                }
+            };
+            
+            reader.readAsDataURL(file);
+        }
+        
+        // Test connection on page load
+        window.onload = () => {
+            log('🧪 Connection test page loaded');
+            testConnection();
+        };
+    </script>
+</body>
+</html> 
