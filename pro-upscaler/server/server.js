@@ -19,7 +19,7 @@ class ProUpscalerServer {
             credentials: true
         }));
         
-        this.app.use(express.json({ limit: '100mb' }));
+        this.app.use(express.json({ limit: '1500mb' })); // 1.5GB to account for Base64 overhead
         this.app.use(express.static(path.join(__dirname, '../client')));
         
         this.app.use((req, res, next) => {

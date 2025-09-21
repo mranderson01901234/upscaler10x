@@ -1,7 +1,7 @@
 class FileHandler {
     constructor() {
         this.supportedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/tiff', 'image/tif'];
-        this.maxFileSize = 100 * 1024 * 1024; // 100MB
+        this.maxFileSize = 1024 * 1024 * 1024; // 1GB
     }
     
     validateFile(file) {
@@ -9,6 +9,16 @@ class FileHandler {
         if (!this.supportedTypes.includes(file.type)) return false;
         if (file.size > this.maxFileSize) return false;
         return true;
+    }
+    
+    getFileSizeWarning(file) {
+        const sizeMB = file.size / (1024 * 1024);
+        if (sizeMB > 500) {
+            return 'large'; // Files over 500MB may take several minutes to process
+        } else if (sizeMB > 100) {
+            return 'medium'; // Files over 100MB may take longer to process
+        }
+        return 'normal';
     }
     
     async loadImage(file) {

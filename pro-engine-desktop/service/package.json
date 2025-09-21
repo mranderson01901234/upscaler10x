@@ -4,8 +4,8 @@
     "description": "Pro Engine Desktop Service for high-performance image upscaling",
     "main": "server.js",
     "scripts": {
-        "start": "node --expose-gc server.js",
-        "dev": "nodemon --expose-gc server.js",
+        "start": "node --expose-gc --max-old-space-size=8192 server.js",
+        "dev": "nodemon --expose-gc --max-old-space-size=8192 server.js",
         "test": "echo \"No tests yet\" && exit 0",
         "install-service": "node install-service.js",
         "uninstall-service": "node uninstall-service.js"

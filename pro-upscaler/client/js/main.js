@@ -85,8 +85,16 @@ class ProUpscalerApp {
     
     async processFile(file) {
         if (!this.fileHandler.validateFile(file)) {
-            this.showNotification('Please select a valid image file (PNG, JPEG, WebP, TIFF)', 'error');
+            this.showNotification('Please select a valid image file (PNG, JPEG, WebP, TIFF) up to 1GB', 'error');
             return;
+        }
+        
+        // Show warning for large files
+        const sizeWarning = this.fileHandler.getFileSizeWarning(file);
+        if (sizeWarning === 'large') {
+            this.showNotification('⚠️ Large file detected (>500MB). Processing may take several minutes.', 'warning');
+        } else if (sizeWarning === 'medium') {
+            this.showNotification('ℹ️ Medium file size (>100MB). Processing may take longer than usual.', 'info');
         }
         
         try {

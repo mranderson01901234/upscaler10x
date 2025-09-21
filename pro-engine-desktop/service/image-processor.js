@@ -45,7 +45,12 @@ class ImageProcessor {
         // Adjust memory settings based on image size
         const estimatedMemoryMB = Math.round(targetPixels * 4 / 1024 / 1024); // 4 bytes per pixel estimate
         
-        if (targetPixels > 400000000) {
+        if (targetPixels > 800000000) {
+            // Extremely large images (800MP+): Ultra-conservative memory management
+            sharp.cache({ memory: 10, files: 2, items: 10 });
+            console.log(`🧠 Extreme image memory optimization: Ultra-conservative cache (est. ${estimatedMemoryMB}MB needed)`);
+            return 'ultra-aggressive';
+        } else if (targetPixels > 400000000) {
             // Very large images: Aggressive memory management
             sharp.cache({ memory: 25, files: 5, items: 20 });
             console.log(`🧠 Large image memory optimization: Conservative cache (est. ${estimatedMemoryMB}MB needed)`);

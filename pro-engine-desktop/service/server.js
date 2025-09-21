@@ -28,9 +28,9 @@ class ProEngineDesktopService {
             allowedHeaders: ['Content-Type', 'Authorization']
         }));
         
-        // Parse large JSON payloads for image data
-        this.app.use(express.json({ limit: '200mb' }));
-        this.app.use(express.urlencoded({ extended: true, limit: '200mb' }));
+        // Parse large JSON payloads for image data (1.5GB to account for Base64 overhead)
+        this.app.use(express.json({ limit: '1500mb' }));
+        this.app.use(express.urlencoded({ extended: true, limit: '1500mb' }));
         
         // Request logging
         this.app.use((req, res, next) => {
