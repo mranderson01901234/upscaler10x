@@ -16,11 +16,52 @@ class AIEnhancer {
             const inferenceScript = path.join(this.codeformerPath, 'inference_codeformer.py');
             await fs.access(inferenceScript);
             
+            // Check GPU availability
+            await this.checkGPUStatus();
+            
             this.isAvailable = true;
             console.log('✅ AI Enhancement (CodeFormer) available');
         } catch (error) {
             console.log('⚠️ AI Enhancement not available:', error.message);
             this.isAvailable = false;
+        }
+    }
+    
+    async checkGPUStatus() {
+        try {
+            const pythonPath = '/home/mranderson/pro-upscaler-ai-research/ai-research-env/bin/python';
+            const { spawn } = require('child_process');
+            
+            return new Promise((resolve) => {
+                const python = spawn(pythonPath, [
+                    '-c', 
+                    'import torch; print(f"GPU Available: {torch.cuda.is_available()}"); print(f"GPU Device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \'CPU Only\'}")'
+                ], {
+                    stdio: ['pipe', 'pipe', 'pipe']
+                });
+                
+                let output = '';
+                python.stdout.on('data', (data) => {
+                    output += data.toString();
+                });
+                
+                python.on('close', () => {
+                    if (output.includes('GPU Available: True')) {
+                        console.log('🚀 AI Enhancement: GPU acceleration enabled');
+                        console.log(`📊 ${output.trim().split('\n').join(', ')}`);
+                    } else {
+                        console.log('⚠️ AI Enhancement: Running in CPU mode');
+                    }
+                    resolve();
+                });
+                
+                python.on('error', () => {
+                    console.log('⚠️ AI Enhancement: Could not check GPU status');
+                    resolve();
+                });
+            });
+        } catch (error) {
+            console.log('⚠️ AI Enhancement: GPU status check failed');
         }
     }
     
@@ -132,8 +173,8 @@ class AIEnhancer {
                 stdio: ['pipe', 'pipe', 'pipe'],
                 env: {
                     ...process.env,
-                    CUDA_VISIBLE_DEVICES: '',  // Force CPU mode
-                    TORCH_USE_CUDA_DSA: '1'
+                    // Enable GPU acceleration - let CodeFormer auto-detect best device
+                    PYTORCH_CUDA_ALLOC_CONF: 'max_split_size_mb:512'
                 }
             });
             
@@ -155,11 +196,16 @@ class AIEnhancer {
                     // Check if CodeFormer detected faces
                     const noFacesDetected = stdout.includes('detect 0 faces');
                     
+                    // Log performance metrics
+                    const isUsingGPU = stderr.includes('cuda') || stdout.includes('cuda') || processingTime < 10000;
+                    console.log(`⚡ AI Enhancement Performance: ${processingTime}ms ${isUsingGPU ? '(GPU)' : '(CPU)'}`);
+                    
                     resolve({
                         success: true,
                         processingTime: processingTime,
                         stdout: stdout,
-                        noFacesDetected: noFacesDetected
+                        noFacesDetected: noFacesDetected,
+                        usingGPU: isUsingGPU
                     });
                 } else {
                     resolve({
@@ -174,11 +220,11 @@ class AIEnhancer {
                 reject(new Error(`Failed to start CodeFormer: ${error.message}`));
             });
             
-            // Set timeout for AI processing (60 seconds max for CPU mode)
+            // Set timeout for AI processing (30 seconds for GPU mode)
             setTimeout(() => {
                 python.kill();
-                reject(new Error('AI enhancement timeout after 60 seconds'));
-            }, 60000);
+                reject(new Error('AI enhancement timeout after 30 seconds'));
+            }, 30000);
         });
     }
     
