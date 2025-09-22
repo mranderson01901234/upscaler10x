@@ -57,54 +57,56 @@ main {
     overflow: hidden;
 }
 
-/* Progress Footer - Fixed at bottom, always visible, stops at sidebar */
+/* Progress Footer - Shadcn Pill Style */
 .progress-footer {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 18rem; /* Stop at sidebar width (w-72 = 18rem) */
+    bottom: 1.5rem;
+    left: 1.5rem;
+    right: calc(18rem + 1.5rem); /* Stop at sidebar width + margin */
     z-index: 50;
-    background-color: hsl(var(--card) / 0.95);
+    display: flex;
+    justify-content: center;
+    pointer-events: none; /* Allow clicks to pass through empty areas */
+}
+
+.progress-footer-pill {
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 9999px; /* Full rounded pill */
+    box-shadow: 0 4px 12px hsl(var(--background) / 0.15), 0 2px 4px hsl(var(--background) / 0.1);
     backdrop-filter: blur(12px);
-    border-top: 1px solid hsl(var(--border));
-    border-right: 1px solid hsl(var(--border));
-    box-shadow: 0 -4px 12px hsl(var(--background) / 0.1);
-    transition: transform 0.3s ease, opacity 0.3s ease;
-    /* Always visible - no hidden state transform */
+    padding: 0.75rem 1.5rem;
+    max-width: 32rem; /* Limit pill width */
+    width: fit-content;
+    transition: all 0.3s ease;
+    pointer-events: auto; /* Re-enable clicks on the pill itself */
 }
 
 /* When footer is hidden, reduce opacity but keep visible */
-.progress-footer.hidden {
-    opacity: 0.3;
-    /* Remove transform: translateY(100%) to keep it always visible */
+.progress-footer.hidden .progress-footer-pill {
+    opacity: 0.4;
+    transform: translateY(0.5rem);
 }
 
-.progress-footer-content {
-    padding: 0.5rem 1.5rem;
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-/* Sticky Action Button in Sidebar */
+/* Action Button at Bottom of Sidebar - Clean UI */
 .sticky-action-button {
-    position: sticky;
-    bottom: 0;
-    margin-top: auto;
-    padding: 1rem 0 0 0;
-    background: linear-gradient(to top, hsl(var(--card) / 0.8) 0%, hsl(var(--card) / 0.4) 50%, transparent 100%);
-    backdrop-filter: blur(8px);
+    flex-shrink: 0; /* Don't shrink this element */
+    padding: 1rem 1rem 1.5rem 1rem; /* Match sidebar content padding */
     z-index: 10;
 }
 
-/* Ensure the button is always visible and prominent */
+/* Clean shadcn-style button */
 .sticky-action-button .btn-primary {
-    box-shadow: 0 2px 8px hsl(var(--primary) / 0.2);
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px hsl(var(--background) / 0.12), 0 1px 2px hsl(var(--background) / 0.24);
     transition: all 0.2s ease;
+    font-weight: 500;
+    border: 1px solid hsl(var(--primary));
 }
 
-.sticky-action-button .btn-primary:not(:disabled):hover {
+.sticky-action-button .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 4px 6px hsl(var(--background) / 0.15), 0 2px 4px hsl(var(--background) / 0.12);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
 }
 
 /* Single Pane Container */
@@ -514,15 +516,33 @@ main {
     margin-bottom: 1.5rem;
 }
 
-/* Sidebar Content - Absolute Maximum Height */
+/* Sidebar Content - Scrollable area above button */
 .sidebar-content {
     flex: 1;
     min-height: 0; /* Allow flex shrinking */
-    overflow: hidden; /* No scrolling needed - content fits */
+    overflow-y: auto; /* Enable scrolling when content overflows */
     display: flex;
     flex-direction: column;
-    gap: 0.75rem; /* Increased gap between cards for better visual separation */
-    height: 100%; /* Use full container height */
+    gap: 0.75rem; /* Gap between cards */
+    padding-bottom: 0.5rem; /* Small padding at bottom of scrollable area */
+}
+
+/* Custom scrollbar styling for sidebar */
+.sidebar-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 2px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
 }
 
 /* Canvas Left Panel for Results and Large File Detection */
@@ -740,9 +760,74 @@ main {
 .flex { display: flex; }
 .flex-1 { flex: 1 1 0%; }
 
-/* Canvas area - add bottom padding to account for always-visible progress footer */
+/* Canvas area - add bottom padding to account for pill progress footer */
 .flex-1.flex.flex-col.h-full.p-3 {
-    padding-bottom: 3rem !important; /* Account for smaller progress footer height - only for canvas area, not sidebar */
+    padding-bottom: 5rem !important; /* Account for pill footer height + margin */
+    width: 100%; /* Ensure full width usage */
+}
+
+/* Image preview area - ensure proper sizing and responsiveness */
+.image-preview-single-pane {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px; /* Ensure minimum height for proper display */
+}
+
+/* Image preview container - optimal sizing */
+.image-preview-single-pane > div {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    padding: 1rem; /* Add padding so image doesn't touch edges */
+}
+
+/* Smart image sizing - works with JavaScript auto-scaling */
+#preview-image {
+    max-width: min(90vw, 900px); /* Absolute maximum constraints */
+    max-height: min(80vh, 700px); /* Absolute maximum constraints */
+    object-fit: contain;
+    transition: all 0.3s ease; /* Smooth size transitions */
+    
+    /* High quality rendering */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    
+    /* Ensure image is always visible */
+    min-width: 100px;
+    min-height: 100px;
+}
+
+/* For very small images, scale them up while maintaining quality */
+@media (max-width: 400px) {
+    #preview-image {
+        min-width: 150px;
+        min-height: 150px;
+        max-width: 90vw;
+        max-height: 60vh;
+    }
+}
+
+/* Upload area - ensure proper sizing */
+.upload-area-single-pane {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Ensure the main canvas container takes full available space */
+.flex-1.flex.h-full {
+    min-width: 0; /* Allow flex items to shrink below content size */
+}
+
+/* Ensure inner content containers use full space */
+.flex-1.flex.items-center.justify-center.min-h-0 {
+    width: 100%;
 }
 .flex-col { flex-direction: column; }
 .items-center { align-items: center; }

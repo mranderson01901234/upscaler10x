@@ -173,8 +173,10 @@ class AIEnhancer {
                 stdio: ['pipe', 'pipe', 'pipe'],
                 env: {
                     ...process.env,
-                    // Enable GPU acceleration - let CodeFormer auto-detect best device
-                    PYTORCH_CUDA_ALLOC_CONF: 'max_split_size_mb:512'
+                    // Temporarily force CPU mode until CUDA compatibility is resolved
+                    CUDA_VISIBLE_DEVICES: '',
+                    // Alternative: Enable GPU but handle CUDA errors gracefully
+                    // PYTORCH_CUDA_ALLOC_CONF: 'max_split_size_mb:512'
                 }
             });
             
@@ -208,10 +210,23 @@ class AIEnhancer {
                         usingGPU: isUsingGPU
                     });
                 } else {
+                    // Check for specific CUDA errors
+                    const cudaError = stderr.includes('CUDA error') || stderr.includes('AcceleratorError');
+                    const noKernelError = stderr.includes('no kernel image is available for execution');
+                    
+                    let errorMessage = stderr || `Process exited with code ${code}`;
+                    
+                    if (cudaError && noKernelError) {
+                        errorMessage += '\n🔧 GPU Compatibility Issue: GTX 1050 requires older PyTorch version';
+                        console.log('⚠️ CUDA Error: GPU not compatible with current PyTorch version');
+                        console.log('💡 Suggestion: Consider using CPU mode or downgrading PyTorch');
+                    }
+                    
                     resolve({
                         success: false,
-                        error: stderr || `Process exited with code ${code}`,
-                        processingTime: processingTime
+                        error: errorMessage,
+                        processingTime: processingTime,
+                        cudaError: cudaError
                     });
                 }
             });

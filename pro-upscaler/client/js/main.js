@@ -325,6 +325,50 @@ class ProUpscalerApp {
         
         if (previewImage) {
             previewImage.src = imageData.dataUrl;
+            
+            // Smart sizing based on image dimensions
+            previewImage.onload = () => {
+                const naturalWidth = previewImage.naturalWidth;
+                const naturalHeight = previewImage.naturalHeight;
+                const aspectRatio = naturalWidth / naturalHeight;
+                
+                // Calculate optimal display size
+                const containerWidth = previewArea.clientWidth - 64; // Account for padding
+                const containerHeight = previewArea.clientHeight - 64;
+                
+                let displayWidth, displayHeight;
+                
+                // For very small images (< 300px), scale them up
+                if (naturalWidth < 300 || naturalHeight < 300) {
+                    const minSize = 300;
+                    if (aspectRatio > 1) {
+                        displayWidth = Math.max(minSize, Math.min(containerWidth * 0.6, 600));
+                        displayHeight = displayWidth / aspectRatio;
+                    } else {
+                        displayHeight = Math.max(minSize, Math.min(containerHeight * 0.6, 600));
+                        displayWidth = displayHeight * aspectRatio;
+                    }
+                }
+                // For large images, ensure they fit nicely in the container
+                else if (naturalWidth > containerWidth * 0.8 || naturalHeight > containerHeight * 0.8) {
+                    if (aspectRatio > containerWidth / containerHeight) {
+                        displayWidth = Math.min(containerWidth * 0.8, 800);
+                        displayHeight = displayWidth / aspectRatio;
+                    } else {
+                        displayHeight = Math.min(containerHeight * 0.8, 600);
+                        displayWidth = displayHeight * aspectRatio;
+                    }
+                }
+                // For medium-sized images, show at a comfortable viewing size
+                else {
+                    displayWidth = Math.min(Math.max(naturalWidth, 400), containerWidth * 0.7);
+                    displayHeight = displayWidth / aspectRatio;
+                }
+                
+                // Apply the calculated size
+                previewImage.style.width = `${displayWidth}px`;
+                previewImage.style.height = `${displayHeight}px`;
+            };
         }
         
         // Update image details in sidebar
