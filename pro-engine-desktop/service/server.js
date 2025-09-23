@@ -6,11 +6,12 @@ const sharp = require('sharp');
 const ImageProcessor = require('./image-processor');
 const HardwareDetector = require('./hardware-detector');
 const FileManager = require('./file-manager');
+const { SubscriptionVerifier } = require('./subscription-verifier');
 
 class ProEngineDesktopService {
     constructor() {
         this.app = express();
-        this.port = process.env.PORT || 3006;
+        this.port = process.env.PORT || 3007;
         this.sessions = new Map();
         this.imageProcessor = new ImageProcessor();
         this.hardwareDetector = new HardwareDetector();
@@ -23,7 +24,7 @@ class ProEngineDesktopService {
     setupMiddleware() {
         // CORS for browser communication
         this.app.use(cors({
-            origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3002', 'http://localhost:8080'],
+            origin: true, // Allow all origins for dev
             credentials: true,
             methods: ['GET', 'POST', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization']
@@ -190,7 +191,7 @@ class ProEngineDesktopService {
                     clearInterval(progressInterval);
                     setTimeout(() => res.end(), 1000); // Give time for final update
                 }
-            }, 500); // Update every 500ms
+            }, 2000); // Update every 2000ms (reduced from 500ms for CPU optimization)
             
             // Cleanup on client disconnect
             req.on('close', () => {
@@ -201,6 +202,40 @@ class ProEngineDesktopService {
         // AI-enhanced processing endpoint
         this.app.post('/api/process-with-ai', async (req, res) => {
             try {
+                console.log('🔍 AI Processing Request received');
+                const authHeader = req.headers['authorization'];
+                const token = authHeader && authHeader.split(' ')[1];
+                console.log('🔐 Token received:', token ? `Present (length: ${token.length})` : 'Missing');
+                
+                // DEVELOPMENT FALLBACK: Allow AI processing without token for testing
+                let userEmail = 'dparker918@yahoo.com'; // Default test user for development
+                
+                if (token) {
+                    // PRODUCTION PATH: Extract user email from token
+                    try {
+                        // Decode JWT token to get user email (without verification for simplicity)
+                        const tokenPayload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+                        userEmail = tokenPayload.email;
+                        console.log('🔍 User email from token:', userEmail);
+                    } catch (e) {
+                        console.error('❌ Failed to decode token:', e.message);
+                        return res.status(401).json({ error: 'Invalid token format' });
+                    }
+                } else {
+                    // DEVELOPMENT FALLBACK: Use default test user
+                    console.log('⚠️ No token provided, using development fallback user:', userEmail);
+                }
+                
+                // Hardcoded Pro users list - SIMPLE AND RELIABLE
+                const proUsers = ['dparker918@yahoo.com', 'testpro@example.com', 'dparker91999@gmail.com'];
+                
+                if (!proUsers.includes(userEmail)) {
+                    console.error('❌ User not in Pro users list:', userEmail);
+                    return res.status(403).json({ error: 'AI access denied', reason: 'Pro subscription required', currentTier: 'free' });
+                }
+                
+                console.log('✅ AI access granted for hardcoded Pro user:', userEmail);
+
                 const { sessionId, imageData, scaleFactor, format, quality, customFilename, customLocation, aiPreferences = {} } = req.body;
                 
                 if (!sessionId || !imageData || !scaleFactor) {
@@ -221,7 +256,8 @@ class ProEngineDesktopService {
                         quality: parseInt(quality || 95),
                         customFilename: customFilename || null,
                         customLocation: customLocation || null,
-                        aiPreferences: aiPreferences
+                        aiPreferences: aiPreferences,
+                        userId: userEmail // Use email as user identifier
                     },
                     progress: 0,
                     message: 'AI processing queued...',
@@ -241,11 +277,104 @@ class ProEngineDesktopService {
                 
             } catch (error) {
                 console.error('AI processing request error:', error);
+                console.error('Error stack:', error.stack);
                 res.status(500).json({
                     error: 'Failed to start AI processing',
-                    details: error.message
+                    details: error.message,
+                    stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
                 });
             }
+        });
+
+        // Pro Engine status endpoint for client detection
+        this.app.get('/api/pro-engine/status', async (req, res) => {
+            try {
+                const lastVerified = Date.now();
+                res.json({
+                    service: 'Pro Engine Desktop Service',
+                    version: '1.0.0',
+                    aiModelsLoaded: true, // placeholder until model loader integration
+                    lastVerified
+                });
+            } catch (e) {
+                res.status(500).json({ error: 'Status failed' });
+            }
+        });
+
+        // Enhanced preview endpoint for AI-enhanced canvas display
+        this.app.get('/api/enhanced-preview/:sessionId', async (req, res) => {
+            try {
+                const { sessionId } = req.params;
+                const session = this.sessions.get(sessionId);
+                
+                if (!session) {
+                    return res.status(404).json({ error: 'Session not found' });
+                }
+                
+                // If no enhanced buffer, try to serve the final result file
+                if (!session.enhancedBuffer) {
+                    console.log(`🔍 No enhanced buffer for session ${sessionId}, checking for result file...`);
+                    
+                    if (session.status === 'complete' && session.result && session.result.outputPath) {
+                        try {
+                            const fs = require('fs');
+                            console.log(`📁 Attempting to read file: ${session.result.outputPath}`);
+                            const fileBuffer = fs.readFileSync(session.result.outputPath);
+                            
+                            res.set({
+                                'Content-Type': 'image/png',
+                                'Content-Length': fileBuffer.length,
+                                'Cache-Control': 'no-cache',
+                                'Access-Control-Allow-Origin': '*',
+                                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                                'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                            });
+                            
+                            res.send(fileBuffer);
+                            console.log(`📊 Served final result as preview for session ${sessionId}: ${fileBuffer.length} bytes`);
+                            return;
+                        } catch (fileError) {
+                            console.error('Failed to read result file:', fileError);
+                            console.error('File path:', session.result?.outputPath);
+                            console.error('Session status:', session.status);
+                        }
+                    } else {
+                        console.log(`❌ Session incomplete or no result path:`, {
+                            status: session.status,
+                            hasResult: !!session.result,
+                            hasOutputPath: !!(session.result?.outputPath)
+                        });
+                    }
+                    return res.status(404).json({ error: 'Enhanced preview not available' });
+                }
+                
+                res.set({
+                    'Content-Type': 'image/png',
+                    'Content-Length': session.enhancedBuffer.length,
+                    'Cache-Control': 'no-cache',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                });
+                
+                res.send(session.enhancedBuffer);
+                console.log(`📊 Served enhanced preview for session ${sessionId}: ${session.enhancedBuffer.length} bytes`);
+                
+            } catch (error) {
+                console.error('Enhanced preview error:', error);
+                res.status(500).json({ error: 'Failed to serve enhanced preview' });
+            }
+        });
+
+        // Handle CORS preflight for enhanced-preview
+        this.app.options('/api/enhanced-preview/:sessionId', (req, res) => {
+            res.set({
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Access-Control-Max-Age': '3600'
+            });
+            res.status(200).end();
         });
 
         // Download processed file endpoint
@@ -275,11 +404,50 @@ class ProEngineDesktopService {
                 const fileBuffer = await fs.readFile(filePath);
                 res.send(fileBuffer);
                 
-                // Schedule cleanup
-                setTimeout(() => this.cleanupSession(sessionId), 5000);
+                // Schedule cleanup after longer delay to allow for retries
+                setTimeout(() => this.cleanupSession(sessionId), 300000); // 5 minutes instead of 5 seconds
                 
             } catch (error) {
                 console.error('Download error:', error);
+                res.status(500).json({
+                    error: 'Download failed',
+                    details: error.message
+                });
+            }
+        });
+
+        // Direct file download endpoint (works with filename instead of session)
+        this.app.get('/api/file/:filename', async (req, res) => {
+            try {
+                const { filename } = req.params;
+                // Basic path traversal protection only
+                const sanitizedFilename = filename.replace(/\.\./g, '').replace(/\//g, '').replace(/\\/g, '');
+                
+                // Look for file in Downloads/ProUpscaler folder
+                const downloadsPath = path.join(os.homedir(), 'Downloads', 'ProUpscaler');
+                const filePath = path.join(downloadsPath, sanitizedFilename);
+                
+                // Check if file exists
+                if (!await fs.access(filePath).then(() => true).catch(() => false)) {
+                    return res.status(404).json({ error: 'File not found' });
+                }
+                
+                // Get file stats for content length
+                const stats = await fs.stat(filePath);
+                
+                // Set headers for download
+                res.setHeader('Content-Type', 'application/octet-stream');
+                res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+                res.setHeader('Content-Length', stats.size);
+                
+                // Stream file to response
+                const fileBuffer = await fs.readFile(filePath);
+                res.send(fileBuffer);
+                
+                console.log(`📥 Direct file download: ${filename} (${stats.size} bytes)`);
+                
+            } catch (error) {
+                console.error('Direct file download error:', error);
                 res.status(500).json({
                     error: 'Download failed',
                     details: error.message
@@ -305,6 +473,7 @@ class ProEngineDesktopService {
             status: session.status,
             progress: session.progress,
             message: session.message,
+            aiEnhanced: session.aiEnhanced || false,
             timestamp: Date.now()
         });
         
@@ -419,6 +588,32 @@ class ProEngineDesktopService {
                     height: Math.round(imageInfo.height * config.scaleFactor)
                 }
             };
+
+            // Store enhanced buffer for canvas preview
+            console.log(`🔍 Debug processedImage structure:`, {
+                hasEnhancedOnly: !!processedImage.enhancedOnly,
+                hasAiEnhancementApplied: !!processedImage.aiEnhancementApplied,
+                hasBuffer: !!processedImage.buffer,
+                isBuffer: Buffer.isBuffer(processedImage),
+                keys: Object.keys(processedImage)
+            });
+            
+            if (processedImage.enhancedOnly && processedImage.aiEnhancementApplied) {
+                // AI-enhanced buffer available
+                session.enhancedBuffer = processedImage.enhancedOnly;
+                session.aiScale = processedImage.aiScale;
+                console.log(`📊 Stored AI-enhanced buffer for canvas preview: ${session.enhancedBuffer.length} bytes`);
+            } else if (processedImage.buffer) {
+                // Store final result buffer for preview when AI enhancement not available
+                session.enhancedBuffer = processedImage.buffer;
+                console.log(`📊 Stored final result buffer for canvas preview: ${processedImage.buffer.length} bytes`);
+            } else if (Buffer.isBuffer(processedImage)) {
+                // processedImage is directly a buffer
+                session.enhancedBuffer = processedImage;
+                console.log(`📊 Stored direct buffer for canvas preview: ${processedImage.length} bytes`);
+            } else {
+                console.log(`⚠️ No suitable buffer found for canvas preview`);
+            }
             
             // Save to user's downloads folder using the new format structure
             const saveResult = await this.fileManager.saveProcessedImage(
@@ -428,10 +623,14 @@ class ProEngineDesktopService {
                 config.customLocation
             );
             
+            // Determine if AI enhancement was actually applied
+            const wasAiEnhanced = !!(processedImage.enhancedOnly && processedImage.aiEnhancementApplied);
+            
             session.status = 'complete';
             session.progress = 100;
-            session.message = 'AI-enhanced processing complete!';
+            session.message = wasAiEnhanced ? 'AI-enhanced processing complete!' : 'High-quality upscaling complete!';
             session.endTime = Date.now();
+            session.aiEnhanced = wasAiEnhanced; // Store AI enhancement status for progress updates
             session.result = {
                 outputPath: saveResult.filepath,
                 filename: saveResult.filename,
@@ -439,8 +638,11 @@ class ProEngineDesktopService {
                 dimensions: result.dimensions,
                 format: saveResult.format,
                 processingTime: session.endTime - session.startTime,
-                aiEnhanced: true
+                aiEnhanced: wasAiEnhanced
             };
+            
+            // Store AI enhancement status in session for progress reporting
+            session.aiEnhanced = wasAiEnhanced;
             
             console.log(`✅ AI processing complete for session ${sessionId}: ${session.result.filename}`);
             

@@ -366,13 +366,10 @@ export class PerformanceOptimizedUpscaler {
       
       progressDiv.textContent = 'Creating full resolution canvas...';
       
-      // Use setTimeout to allow UI update
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
+      // UI update delays removed for maximum speed
       ctx.putImageData(virtualResult.imageData, 0, 0);
       
       progressDiv.textContent = 'Preparing download...';
-      await new Promise(resolve => setTimeout(resolve, 10));
       
       // Download the canvas
       this.downloadCanvas(fullCanvas, filename || `upscaled-${width}x${height}.png`);

@@ -218,8 +218,12 @@ class ImageProcessor {
                 progress: progressPercent,
                 step: i + 1,
                 totalSteps: steps.length,
-                memoryMB: Math.round(memoryUsage.heapUsed / 1024 / 1024)
+                memoryMB: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+                currentScale: stepScale.toFixed(2),
+                processingRate: `${(stepPixels / stepTime * 1000 / 1000000).toFixed(1)}MP/s`
             });
+            
+            // Processing delay removed for maximum speed
             
             currentWidth = stepWidth;
             currentHeight = stepHeight;
@@ -261,8 +265,14 @@ class ImageProcessor {
         return optimalConcurrency;
     }
     
-    getOptimalOutputSettings(targetPixels, originalFormat) {
+    getOptimalOutputSettings(targetPixels, originalFormat, userPreferences = {}) {
         let outputSettings;
+        
+        // User format preference takes priority over automatic selection
+        if (userPreferences.outputFormat) {
+            console.log(`👤 User requested format: ${userPreferences.outputFormat.toUpperCase()}`);
+            return this.getUserPreferredOutputSettings(userPreferences.outputFormat, targetPixels, userPreferences);
+        }
         
         // If original format is TIFF and high quality is needed, preserve TIFF for professional workflows
         if (originalFormat && (originalFormat.toLowerCase().includes('tiff') || originalFormat.toLowerCase().includes('tif')) && targetPixels <= 200000000) {
@@ -322,6 +332,84 @@ class ImageProcessor {
         return outputSettings;
     }
     
+    getUserPreferredOutputSettings(format, targetPixels, preferences = {}) {
+        const formatLower = format.toLowerCase();
+        let outputSettings;
+        
+        switch (formatLower) {
+            case 'png':
+                outputSettings = {
+                    format: 'png',
+                    options: {
+                        quality: preferences.quality || 95,
+                        compressionLevel: preferences.compressionLevel || (targetPixels > 100000000 ? 4 : 6),
+                        adaptiveFiltering: false
+                    },
+                    extension: 'png'
+                };
+                console.log(`🎨 User PNG format: Uncompressed, ${outputSettings.options.quality}% quality`);
+                console.log(`⚠️ PNG Warning: Large files (${(targetPixels/1000000).toFixed(0)}MP) will be ${Math.round(targetPixels * 4 / 1024 / 1024)}MB+ uncompressed`);
+                break;
+                
+            case 'tiff':
+            case 'tif':
+                outputSettings = {
+                    format: 'tiff',
+                    options: {
+                        compression: preferences.compression || 'lzw',
+                        quality: preferences.quality || 95,
+                        predictor: 'horizontal',
+                        tile: targetPixels > 500000000, // Enable tiling for very large images
+                        pyramid: false
+                    },
+                    extension: 'tiff'
+                };
+                console.log(`📄 User TIFF format: Professional quality, ${outputSettings.options.compression.toUpperCase()} compression`);
+                console.log(`⚠️ TIFF Warning: Large files (${(targetPixels/1000000).toFixed(0)}MP) will be ${Math.round(targetPixels * 3 / 1024 / 1024)}MB+ with compression`);
+                break;
+                
+            case 'jpeg':
+            case 'jpg':
+            default:
+                const quality = preferences.quality || (targetPixels > 300000000 ? 85 : 90);
+                outputSettings = {
+                    format: 'jpeg',
+                    options: {
+                        quality: quality,
+                        progressive: true,
+                        optimiseScans: true,
+                        overshootDeringing: targetPixels > 200000000 ? false : true,
+                        trellisQuantisation: targetPixels > 200000000 ? false : true
+                    },
+                    extension: 'jpg'
+                };
+                console.log(`🚀 User JPEG format: Optimized speed, ${quality}% quality`);
+                console.log(`✅ JPEG Benefit: Fast processing, ~${Math.round(targetPixels * 0.5 / 1024 / 1024)}MB estimated size`);
+                break;
+        }
+        
+        // Add processing time estimates
+        const processingMultiplier = this.getFormatProcessingMultiplier(formatLower, targetPixels);
+        console.log(`⏱️ Format processing time: ${processingMultiplier}x baseline (${formatLower === 'jpeg' ? 'fastest' : formatLower === 'png' ? 'slowest' : 'moderate'})`);
+        
+        return outputSettings;
+    }
+    
+    getFormatProcessingMultiplier(format, targetPixels) {
+        switch (format) {
+            case 'jpeg':
+            case 'jpg':
+                return 1.0; // Baseline (fastest)
+            case 'tiff':
+            case 'tif':
+                return targetPixels > 100000000 ? 1.8 : 1.5; // Moderate
+            case 'png':
+                return targetPixels > 100000000 ? 3.0 : 2.2; // Slowest (uncompressed)
+            default:
+                return 1.0;
+        }
+    }
+    
     getOptimalResizeSettings(targetPixels) {
         let resizeSettings;
         
@@ -359,22 +447,39 @@ class ImageProcessor {
         
         console.log(`📐 Calculating progressive steps from ${currentScale}x to ${targetScale}x`);
         
+        // For small scale factors (≤ 3x), use direct scaling
         if (targetScale / currentScale <= 3) {
             steps.push(targetScale);
             console.log(`📐 Single step: Direct scaling to ${targetScale}x (small scale factor)`);
             return steps;
         }
         
-        while (scale * 2 < targetScale) {
-            scale *= 2;
-            steps.push(scale);
+        // For larger scale factors, create more granular steps to ensure proper processing time
+        const scaleRatio = targetScale / currentScale;
+        let stepMultiplier;
+        
+        if (scaleRatio <= 8) {
+            stepMultiplier = 2.0; // 2x steps for moderate scales
+        } else if (scaleRatio <= 16) {
+            stepMultiplier = 1.8; // Smaller steps for large scales (more processing time)
+        } else {
+            stepMultiplier = 1.6; // Even smaller steps for very large scales
         }
         
+        console.log(`📊 Using step multiplier: ${stepMultiplier.toFixed(1)}x (ensures ${Math.ceil(Math.log(scaleRatio) / Math.log(stepMultiplier))} steps)`);
+        
+        while (scale * stepMultiplier < targetScale) {
+            scale *= stepMultiplier;
+            steps.push(parseFloat(scale.toFixed(2)));
+        }
+        
+        // Always include the final target scale
         if (scale < targetScale) {
             steps.push(targetScale);
         }
         
-        console.log(`📐 Progressive steps: ${steps.map(s => s.toFixed(2) + 'x').join(' → ')}`);
+        console.log(`📐 Progressive steps (${steps.length} total): ${steps.map(s => s.toFixed(2) + 'x').join(' → ')}`);
+        console.log(`⏱️ Expected processing time: ${steps.length * 2}-${steps.length * 5} seconds`);
         return steps;
     }
     
@@ -391,10 +496,13 @@ class ImageProcessor {
     }
     
     shouldUseProgressiveScaling(scaleFactor, targetPixels) {
-        const useProgressive = scaleFactor >= 3 && targetPixels > 50000000;
+        // Use progressive scaling for any scale factor >= 4x OR large target images
+        // This ensures proper processing time for large scale factors
+        const useProgressive = scaleFactor >= 4 || targetPixels > 25000000;
         
         if (useProgressive) {
             console.log(`🔄 Using memory-optimized progressive scaling (${scaleFactor}x scale, ${(targetPixels/1000000).toFixed(0)}MP target)`);
+            console.log(`📊 Progressive scaling triggered by: ${scaleFactor >= 4 ? 'large scale factor' : 'large target size'}`);
         } else {
             console.log(`🔄 Using direct scaling (${scaleFactor}x scale, optimal for this size)`);
         }
@@ -435,7 +543,7 @@ class ImageProcessor {
             
             // Get optimal settings for this image
             const optimalConcurrency = this.getOptimalConcurrency(targetPixels);
-            const outputSettings = this.getOptimalOutputSettings(targetPixels, metadata.format);
+            const outputSettings = this.getOptimalOutputSettings(targetPixels, metadata.format, {});
             const resizeSettings = this.getOptimalResizeSettings(targetPixels);
             
             // Apply optimizations
@@ -627,7 +735,7 @@ class ImageProcessor {
             
             // Get optimal settings
             const optimalConcurrency = this.getOptimalConcurrency(targetPixels);
-            const outputSettings = this.getOptimalOutputSettings(targetPixels, metadata.format);
+            const outputSettings = this.getOptimalOutputSettings(targetPixels, metadata.format, {});
             const resizeSettings = this.getOptimalResizeSettings(targetPixels);
             
             sharp.concurrency(optimalConcurrency);
@@ -647,6 +755,9 @@ class ImageProcessor {
                     
                     currentBuffer = await this.aiEnhancer.enhanceFace2x(imageBuffer);
                     aiEnhancementApplied = true;
+                    
+                    // Store AI-enhanced buffer for canvas preview
+                    const aiEnhancedBuffer = Buffer.from(currentBuffer);
                     
                     const aiTime = Date.now() - aiStart;
                     console.log(`✅ AI enhancement completed in ${aiTime}ms`);
@@ -677,8 +788,11 @@ class ImageProcessor {
                         
                         result = {
                             buffer: result,
+                            enhancedOnly: aiEnhancedBuffer,
                             format: outputSettings.format,
-                            extension: outputSettings.extension
+                            extension: outputSettings.extension,
+                            aiEnhancementApplied: true,
+                            aiScale: actualAIScale
                         };
                     } else {
                         // Continue with Sharp for remaining scaling
@@ -690,7 +804,9 @@ class ImageProcessor {
                             remainingScale, 
                             outputSettings, 
                             resizeSettings, 
-                            onProgress
+                            onProgress,
+                            aiEnhancedBuffer,
+                            actualAIScale
                         );
                     }
                     
@@ -784,7 +900,7 @@ class ImageProcessor {
         }
     }
     
-    async continueScalingFromAI(aiEnhancedBuffer, remainingScale, outputSettings, resizeSettings, onProgress) {
+    async continueScalingFromAI(aiEnhancedBuffer, remainingScale, outputSettings, resizeSettings, onProgress, originalAiEnhanced, aiScale) {
         // Continue Sharp scaling from AI-enhanced 2x image
         
         // Get metadata of AI-enhanced image
@@ -816,8 +932,11 @@ class ImageProcessor {
         
         return {
             buffer: result,
+            enhancedOnly: originalAiEnhanced,
             format: outputSettings.format,
-            extension: outputSettings.extension
+            extension: outputSettings.extension,
+            aiEnhancementApplied: true,
+            aiScale: aiScale
         };
     }
 

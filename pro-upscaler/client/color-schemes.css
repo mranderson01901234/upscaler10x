@@ -1,0 +1,147 @@
+/* Pro Upscaler - Color Scheme Options */
+/* Keep the exact same layout, just change the colors */
+
+/* Option 1: Pure Dark Blue-Gray (No Brown/Tan) */
+.scheme-dark-blue {
+    --background: 210 40% 2%;          /* Very dark blue-gray background */
+    --foreground: 210 40% 98%;         /* Clean white text */
+    --card: 210 40% 6%;                /* Dark blue-gray cards */
+    --card-foreground: 210 40% 98%;    /* White text on cards */
+    --popover: 210 40% 6%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;            /* Bright blue primary */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 12%;          /* Darker blue-gray secondary */
+    --secondary-foreground: 210 40% 98%;
+    --muted: 210 40% 12%;              /* Clean muted blue-gray */
+    --muted-foreground: 210 20% 70%;   /* Light gray text (no tan) */
+    --accent: 210 40% 12%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 210 40% 18%;             /* Subtle blue-gray borders */
+    --input: 210 40% 12%;              /* Input backgrounds */
+    --ring: 217 91% 60%;               /* Blue focus ring */
+    --success: 142 76% 36%;            /* Green success */
+    --success-foreground: 210 40% 98%;
+    --warning: 48 96% 53%;             /* Yellow warning */
+    --warning-foreground: 210 40% 2%;
+    --error: 0 84% 60%;                /* Red error */
+    --error-foreground: 210 40% 98%;
+}
+
+/* Option 2: Deep Black (True Dark) */
+.scheme-true-black {
+    --background: 0 0% 0%;             /* Pure black background */
+    --foreground: 0 0% 100%;           /* Pure white text */
+    --card: 0 0% 4%;                   /* Very dark gray cards */
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 217 91% 60%;            /* Bright blue primary */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 8%;              /* Dark gray secondary */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 8%;                  /* Dark gray muted */
+    --muted-foreground: 0 0% 65%;      /* Light gray text */
+    --accent: 0 0% 8%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 15%;                /* Gray borders */
+    --input: 0 0% 8%;                  /* Input backgrounds */
+    --ring: 217 91% 60%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 48 96% 53%;
+    --warning-foreground: 0 0% 0%;
+    --error: 0 84% 60%;
+    --error-foreground: 0 0% 100%;
+}
+
+/* Option 3: Cool Gray (Professional) */
+.scheme-cool-gray {
+    --background: 220 13% 4%;          /* Cool dark gray */
+    --foreground: 220 13% 98%;         /* Clean white */
+    --card: 220 13% 7%;                /* Cool gray cards */
+    --card-foreground: 220 13% 98%;
+    --popover: 220 13% 7%;
+    --popover-foreground: 220 13% 98%;
+    --primary: 217 91% 60%;            /* Blue primary */
+    --primary-foreground: 220 13% 98%;
+    --secondary: 220 13% 13%;          /* Cool gray secondary */
+    --secondary-foreground: 220 13% 98%;
+    --muted: 220 13% 13%;              /* Cool gray muted */
+    --muted-foreground: 220 9% 68%;    /* Cool gray text */
+    --accent: 220 13% 13%;
+    --accent-foreground: 220 13% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 220 13% 98%;
+    --border: 220 13% 20%;             /* Cool gray borders */
+    --input: 220 13% 13%;              /* Input backgrounds */
+    --ring: 217 91% 60%;
+    --success: 142 76% 36%;
+    --success-foreground: 220 13% 98%;
+    --warning: 48 96% 53%;
+    --warning-foreground: 220 13% 4%;
+    --error: 0 84% 60%;
+    --error-foreground: 220 13% 98%;
+}
+
+/* Option 4: Warm Dark (Subtle Warmth, No Brown) */
+.scheme-warm-dark {
+    --background: 240 6% 4%;           /* Warm dark with subtle blue */
+    --foreground: 240 6% 98%;          /* Clean white */
+    --card: 240 6% 7%;                 /* Warm dark cards */
+    --card-foreground: 240 6% 98%;
+    --popover: 240 6% 7%;
+    --popover-foreground: 240 6% 98%;
+    --primary: 217 91% 60%;            /* Blue primary */
+    --primary-foreground: 240 6% 98%;
+    --secondary: 240 6% 13%;           /* Warm dark secondary */
+    --secondary-foreground: 240 6% 98%;
+    --muted: 240 6% 13%;               /* Warm dark muted */
+    --muted-foreground: 240 5% 68%;    /* Warm gray text */
+    --accent: 240 6% 13%;
+    --accent-foreground: 240 6% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 240 6% 98%;
+    --border: 240 6% 20%;              /* Warm dark borders */
+    --input: 240 6% 13%;               /* Input backgrounds */
+    --ring: 217 91% 60%;
+    --success: 142 76% 36%;
+    --success-foreground: 240 6% 98%;
+    --warning: 48 96% 53%;
+    --warning-foreground: 240 6% 4%;
+    --error: 0 84% 60%;
+    --error-foreground: 240 6% 98%;
+}
+
+/* Option 5: Midnight Blue */
+.scheme-midnight-blue {
+    --background: 220 30% 3%;          /* Deep midnight blue */
+    --foreground: 220 30% 98%;         /* Clean white */
+    --card: 220 30% 6%;                /* Midnight blue cards */
+    --card-foreground: 220 30% 98%;
+    --popover: 220 30% 6%;
+    --popover-foreground: 220 30% 98%;
+    --primary: 217 91% 60%;            /* Bright blue primary */
+    --primary-foreground: 220 30% 98%;
+    --secondary: 220 30% 12%;          /* Midnight blue secondary */
+    --secondary-foreground: 220 30% 98%;
+    --muted: 220 30% 12%;              /* Midnight blue muted */
+    --muted-foreground: 220 20% 70%;   /* Blue-gray text */
+    --accent: 220 30% 12%;
+    --accent-foreground: 220 30% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 220 30% 98%;
+    --border: 220 30% 18%;             /* Midnight blue borders */
+    --input: 220 30% 12%;              /* Input backgrounds */
+    --ring: 217 91% 60%;
+    --success: 142 76% 36%;
+    --success-foreground: 220 30% 98%;
+    --warning: 48 96% 53%;
+    --warning-foreground: 220 30% 3%;
+    --error: 0 84% 60%;
+    --error-foreground: 220 30% 98%;
+} 

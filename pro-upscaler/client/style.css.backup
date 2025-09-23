@@ -72,7 +72,7 @@ body {
     display: flex;
     align-items: center;
     gap: 2rem;
-    justify-content: space-between;
+    justify-content: flex-start;
     width: 100%;
 }
 
@@ -86,40 +86,6 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-}
-
-/* Pro Engine Status Indicator */
-.status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #f8fafc;
-}
-
-.status-circle {
-    font-size: 0.75rem;
-    color: #ef4444; /* Default red for offline */
-    transition: color 0.3s ease;
-}
-
-.status-circle.online {
-    color: #22c55e; /* Green for online */
-}
-
-.status-circle.checking {
-    color: #f59e0b; /* Yellow/orange for checking */
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.5;
-    }
 }
 
 /* Main Content Area */
@@ -1366,121 +1332,6 @@ button:disabled {
     border-color: #2d3748;
 }
 
-/* Action Buttons (Upload/Download) - Distinct Style */
-.action-button {
-    background: #374151;
-    color: #e5e7eb;
-    border: 1px solid #4b5563;
-    border-radius: 0.375rem;
-    padding: 0.375rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    min-width: 2rem;
-    min-height: 2rem;
-}
-
-.action-button:hover {
-    background: #4b5563;
-    border-color: #6b7280;
-    color: #f3f4f6;
-}
-
-.action-button:active {
-    background: #1f2937;
-    border-color: #374151;
-}
-
-/* Upload Button Specific */
-.upload-button {
-    background: #374151;
-    border-color: #4b5563;
-    color: #e5e7eb;
-}
-
-.upload-button:hover {
-    background: #4b5563;
-    border-color: #6b7280;
-    color: #f3f4f6;
-}
-
-/* Download Button Specific */
-.download-button {
-    background: #374151;
-    border-color: #4b5563;
-    color: #e5e7eb;
-}
-
-.download-button:hover {
-    background: #4b5563;
-    border-color: #6b7280;
-    color: #f3f4f6;
-}
-
-/* Disabled state for action buttons */
-.action-button:disabled {
-    background: #374151;
-    border-color: #4b5563;
-    color: #9ca3af;
-    cursor: not-allowed;
-}
-
-.action-button:disabled:hover {
-    background: #374151;
-    border-color: #4b5563;
-}
-
-/* Auth Buttons (Sign In/Sign Up) - Clean Minimal Style */
-.auth-button {
-    background: transparent;
-    color: #e2e8f0;
-    border: 1px solid #475569;
-    border-radius: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-height: 2.75rem;
-}
-
-.auth-button:hover {
-    background: #1e293b;
-    border-color: #64748b;
-    color: #f1f5f9;
-}
-
-/* Primary Auth Button (Sign In) */
-.primary-auth {
-    background: #1e293b;
-    border-color: #334155;
-    color: #f1f5f9;
-}
-
-.primary-auth:hover {
-    background: #334155;
-    border-color: #475569;
-}
-
-/* Secondary Auth Button (Sign Up) */
-.secondary-auth {
-    background: transparent;
-    border-color: #3b82f6;
-    color: #3b82f6;
-}
-
-.secondary-auth:hover {
-    background: #3b82f6;
-    color: white;
-    border-color: #2563eb;
-}
-
 /* Usage Section - Compact */
 .usage-section {
     background-color: #1e293b;
@@ -1571,33 +1422,4 @@ button:disabled {
     gap: 1rem;
 }
 
-/* Tier Badge Styles */
-.tier-badge {
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
 
-.tier-badge.free {
-    background-color: #374151;
-    color: #9ca3af;
-}
-
-.tier-badge.basic {
-    background-color: #1e40af;
-    color: #dbeafe;
-}
-
-.tier-badge.pro {
-    background-color: #7c3aed;
-    color: #e5e7eb;
-}
-
-.tier-badge.admin {
-    background-color: #dc2626;
-    color: #fef2f2;
-    border: 1px solid #f87171;
-}

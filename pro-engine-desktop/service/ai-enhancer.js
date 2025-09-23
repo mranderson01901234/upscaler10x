@@ -158,25 +158,28 @@ class AIEnhancer {
         return new Promise((resolve, reject) => {
             const startTime = Date.now();
             
-            // Use the Python from the virtual environment
+            // Use the virtual environment Python with proper CUDA support
             const pythonPath = '/home/mranderson/pro-upscaler-ai-research/ai-research-env/bin/python';
             
-            // Optimized CodeFormer command - just face enhancement
+            console.log('🚀 Starting CodeFormer with CUDA acceleration enabled');
+            
+            // Optimized CodeFormer command with CUDA support (auto-detected by PyTorch)
             const python = spawn(pythonPath, [
                 'inference_codeformer.py',
                 '-w', '0.05',  // Optimized fidelity parameter (tested)
                 '--input_path', inputPath,
                 '--output_path', outputPath
+                // CUDA is auto-detected by PyTorch when available
                 // NO upscaling flags - Pro Engine will handle all scaling
             ], {
                 cwd: this.codeformerPath,
                 stdio: ['pipe', 'pipe', 'pipe'],
                 env: {
                     ...process.env,
-                    // Temporarily force CPU mode until CUDA compatibility is resolved
-                    CUDA_VISIBLE_DEVICES: '',
-                    // Alternative: Enable GPU but handle CUDA errors gracefully
-                    // PYTORCH_CUDA_ALLOC_CONF: 'max_split_size_mb:512'
+                    // Set up proper environment for CUDA access
+                    PYTHONPATH: '/home/mranderson/pro-upscaler-ai-research/ai-research-env/lib/python3.10/site-packages',
+                    PATH: '/home/mranderson/pro-upscaler-ai-research/ai-research-env/bin:' + process.env.PATH,
+                    VIRTUAL_ENV: '/home/mranderson/pro-upscaler-ai-research/ai-research-env'
                 }
             });
             
@@ -217,9 +220,14 @@ class AIEnhancer {
                     let errorMessage = stderr || `Process exited with code ${code}`;
                     
                     if (cudaError && noKernelError) {
-                        errorMessage += '\n🔧 GPU Compatibility Issue: GTX 1050 requires older PyTorch version';
-                        console.log('⚠️ CUDA Error: GPU not compatible with current PyTorch version');
-                        console.log('💡 Suggestion: Consider using CPU mode or downgrading PyTorch');
+                        console.log('⚠️ CUDA Error detected: GPU incompatible with current PyTorch version');
+                        console.log('🔄 Automatically retrying with CPU mode...');
+                        
+                        // Automatically retry with CPU mode
+                        this.runCodeFormerCPU(inputPath, outputPath)
+                            .then(resolve)
+                            .catch(reject);
+                        return;
                     }
                     
                     resolve({
@@ -235,12 +243,86 @@ class AIEnhancer {
                 reject(new Error(`Failed to start CodeFormer: ${error.message}`));
             });
             
-            // Set timeout for AI processing (30 seconds for GPU mode)
+            // Set timeout for AI processing (30 seconds for GPU, 90 seconds for CPU fallback)
             setTimeout(() => {
                 python.kill();
                 reject(new Error('AI enhancement timeout after 30 seconds'));
             }, 30000);
         });
+    }
+    
+    runCodeFormerCPU(inputPath, outputPath) {
+        return new Promise((resolve, reject) => {
+            const startTime = Date.now();
+            
+            // Use the Python from the virtual environment
+            const pythonPath = '/home/mranderson/pro-upscaler-ai-research/ai-research-env/bin/python';
+            
+            // Force CPU mode with environment variable
+            const python = spawn(pythonPath, [
+                'inference_codeformer.py',
+                '-w', '0.05',  // Optimized fidelity parameter
+                '--input_path', inputPath,
+                '--output_path', outputPath
+            ], {
+                cwd: this.codeformerPath,
+                stdio: ['pipe', 'pipe', 'pipe'],
+                env: {
+                    ...process.env,
+                    CUDA_VISIBLE_DEVICES: '', // Force CPU mode
+                }
+            });
+            
+            let stdout = '';
+            let stderr = '';
+            
+            python.stdout.on('data', (data) => {
+                stdout += data.toString();
+            });
+            
+            python.stderr.on('data', (data) => {
+                stderr += data.toString();
+            });
+            
+            python.on('close', (code) => {
+                const processingTime = Date.now() - startTime;
+                
+                if (code === 0) {
+                    const noFacesDetected = stdout.includes('detect 0 faces');
+                    console.log(`⚡ AI Enhancement (CPU Mode) Performance: ${processingTime}ms`);
+                    
+                    resolve({
+                        success: true,
+                        processingTime: processingTime,
+                        stdout: stdout,
+                        noFacesDetected: noFacesDetected,
+                        usingGPU: false
+                    });
+                } else {
+                    resolve({
+                        success: false,
+                        error: stderr || `Process exited with code ${code}`,
+                        processingTime: processingTime,
+                        cudaError: false
+                    });
+                }
+            });
+            
+            python.on('error', (error) => {
+                reject(new Error(`Failed to start CodeFormer: ${error.message}`));
+            });
+            
+            // Set timeout for CPU processing (60 seconds)
+            setTimeout(() => {
+                python.kill();
+                reject(new Error('AI enhancement timeout after 60 seconds (CPU mode)'));
+            }, 60000);
+        });
+    }
+    
+    runCodeFormerCPU(inputPath, outputPath) {
+        // This method is now redundant since we always use CPU mode
+        return this.runCodeFormer(inputPath, outputPath);
     }
     
     async readCodeFormerOutput(outputDir) {
@@ -269,4 +351,4 @@ class AIEnhancer {
     }
 }
 
-module.exports = AIEnhancer; 
+module.exports = AIEnhancer;

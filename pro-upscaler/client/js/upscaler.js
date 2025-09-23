@@ -314,8 +314,7 @@ class UltraFastUpscaler {
       currentWidth = nextWidth;
       currentHeight = nextHeight;
       
-      // Small delay to allow UI updates
-      await this.delay(1);
+      // Delay removed for maximum speed
     }
 
     // Final copy to destination

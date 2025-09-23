@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Engine Authentication Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: #fff; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 8px; background: #2a2a2a; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .status.success { background: #1a4a3a; border: 1px solid #2a7a5a; }
+        .status.error { background: #4a1a1a; border: 1px solid #7a2a2a; }
+        .status.info { background: #1a3a4a; border: 1px solid #2a5a7a; }
+        .status.warning { background: #4a3a1a; border: 1px solid #7a5a2a; }
+        button { padding: 10px 15px; margin: 5px; background: #4a7a9a; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #5a8aaa; }
+        button:disabled { background: #333; cursor: not-allowed; }
+        input { padding: 8px; margin: 5px; border: 1px solid #555; background: #333; color: #fff; border-radius: 4px; }
+        .pro-status { font-size: 18px; font-weight: bold; margin: 10px 0; }
+        .circle { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .circle.red { background: #ef4444; }
+        .circle.green { background: #22c55e; }
+        .circle.yellow { background: #f59e0b; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .test-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .log { background: #111; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pro Engine Authentication & Authorization Test</h1>
+        
+        <!-- Pro Engine Status -->
+        <div class="section">
+            <h2>Pro Engine Status</h2>
+            <div class="pro-status" id="pro-status">
+                <span class="circle red" id="status-circle"></span>
+                <span id="status-text">Checking...</span>
+            </div>
+            <button onclick="checkProEngineStatus()">Refresh Status</button>
+        </div>
+
+        <!-- Authentication Section -->
+        <div class="section">
+            <h2>Authentication</h2>
+            <div id="auth-status" class="status info">Not signed in</div>
+            
+            <div id="login-form">
+                <h3>Sign In / Sign Up</h3>
+                <input type="email" id="email" placeholder="Email" value="test@example.com">
+                <input type="password" id="password" placeholder="Password" value="testpass123">
+                <br>
+                <button onclick="signUp()">Sign Up</button>
+                <button onclick="signIn()">Sign In</button>
+            </div>
+            
+            <div id="user-info" style="display: none;">
+                <h3>User Information</h3>
+                <p><strong>Email:</strong> <span id="user-email"></span></p>
+                <p><strong>Tier:</strong> <span id="user-tier"></span></p>
+                <p><strong>Status:</strong> <span id="user-status"></span></p>
+                <button onclick="signOut()">Sign Out</button>
+                <button onclick="upgradeTier('pro')">Upgrade to Pro</button>
+                <button onclick="upgradeTier('admin')">Upgrade to Admin</button>
+            </div>
+        </div>
+
+        <!-- Test Grid -->
+        <div class="test-grid">
+            <!-- Pro Engine Tests -->
+            <div class="section">
+                <h2>Pro Engine Tests</h2>
+                <button onclick="testProEngineHealth()">Test Health Check</button>
+                <button onclick="testProEngineCapabilities()">Test Capabilities</button>
+                <button onclick="testProEngineAuth()" id="test-auth-btn" disabled>Test Authorization</button>
+                <div id="pro-engine-results" class="log"></div>
+            </div>
+
+            <!-- Authorization Tests -->
+            <div class="section">
+                <h2>Authorization Tests</h2>
+                <button onclick="testAIAccess()" id="test-ai-btn" disabled>Test AI Access</button>
+                <button onclick="testBasicAccess()" id="test-basic-btn" disabled>Test Basic Access</button>
+                <button onclick="testUsageLimits()" id="test-usage-btn" disabled>Test Usage Limits</button>
+                <div id="auth-results" class="log"></div>
+            </div>
+        </div>
+
+        <!-- Usage Statistics -->
+        <div class="section">
+            <h2>Usage Statistics</h2>
+            <button onclick="refreshUsageStats()" id="usage-btn" disabled>Refresh Usage</button>
+            <div id="usage-stats">
+                <p>Standard: <span id="standard-usage">-</span></p>
+                <p>High-res: <span id="highres-usage">-</span></p>
+                <p>AI Enhancement: <span id="ai-usage">-</span></p>
+            </div>
+        </div>
+
+        <!-- System Logs -->
+        <div class="section">
+            <h2>System Logs</h2>
+            <button onclick="clearLogs()">Clear Logs</button>
+            <div id="system-logs" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Supabase
+        const SUPABASE_URL = 'https://vztoftcjbwzwioxarovy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6dG9mdGNqYnd6d2lveGFyb3Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MTE3ODcsImV4cCI6MjA3NDA4Nzc4N30.Y8fxbY5mxCwgd0W2J65tWFKx38fHlDshSmFzw6CiK04';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let currentUser = null;
+        let userProfile = null;
+        let proEngineAvailable = false;
+        
+        // Logging function
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            const logsDiv = document.getElementById('system-logs');
+            const logLine = document.createElement('div');
+            logLine.style.color = type === 'error' ? '#ff6b6b' : type === 'success' ? '#51cf66' : '#74c0fc';
+            logLine.textContent = logEntry;
+            logsDiv.appendChild(logLine);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(logEntry);
+        }
+        
+        function clearLogs() {
+            document.getElementById('system-logs').innerHTML = '';
+        }
+        
+        // Pro Engine Status Functions
+        async function checkProEngineStatus() {
+            const statusCircle = document.getElementById('status-circle');
+            const statusText = document.getElementById('status-text');
+            
+            statusCircle.className = 'circle yellow';
+            statusText.textContent = 'Checking...';
+            
+            try {
+                // Check desktop service first
+                const desktopResponse = await fetch('http://localhost:3006/health', {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(2000)
+                });
+                
+                if (desktopResponse.ok) {
+                    const healthData = await desktopResponse.json();
+                    statusCircle.className = 'circle green';
+                    statusText.textContent = 'Pro Engine (Desktop) - Online';
+                    proEngineAvailable = true;
+                    log(`✅ Desktop service available: ${healthData.service}`, 'success');
+                    return;
+                }
+            } catch (error) {
+                log('ℹ️ Desktop service not available, checking web service...', 'info');
+            }
+            
+            try {
+                // Check web service
+                const webResponse = await fetch('http://localhost:3002/health', {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(2000)
+                });
+                
+                if (webResponse.ok) {
+                    statusCircle.className = 'circle green';
+                    statusText.textContent = 'Pro Engine (Web) - Online';
+                    proEngineAvailable = true;
+                    log('✅ Web service available', 'success');
+                    return;
+                }
+            } catch (error) {
+                log('❌ No Pro Processing services available', 'error');
+            }
+            
+            statusCircle.className = 'circle red';
+            statusText.textContent = 'Pro Engine - Offline';
+            proEngineAvailable = false;
+        }
+        
+        // Authentication Functions
+        async function signUp() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                log(`Attempting to sign up: ${email}`, 'info');
+                const { data, error } = await supabase.auth.signUp({ email, password });
+                
+                if (error) throw error;
+                
+                if (data.user && !data.session) {
+                    log('Please check your email for verification link', 'warning');
+                    return;
+                }
+                
+                log('Sign up successful', 'success');
+                await loadUserData();
+            } catch (error) {
+                log(`Sign up error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function signIn() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                log(`Attempting to sign in: ${email}`, 'info');
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                
+                if (error) throw error;
+                
+                log('Sign in successful', 'success');
+                await loadUserData();
+            } catch (error) {
+                log(`Sign in error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function signOut() {
+            try {
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
+                
+                currentUser = null;
+                userProfile = null;
+                updateUI();
+                log('Signed out successfully', 'success');
+            } catch (error) {
+                log(`Sign out error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function loadUserData() {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                if (session?.user) {
+                    currentUser = session.user;
+                    
+                    // Load user profile
+                    const { data, error } = await supabase
+                        .from('user_profiles')
+                        .select(`*, subscription_tiers (*)`)
+                        .eq('id', currentUser.id)
+                        .single();
+                    
+                    if (error && error.code === 'PGRST116') {
+                        // Create profile if it doesn't exist
+                        const { data: newProfile, error: createError } = await supabase
+                            .from('user_profiles')
+                            .insert({ id: currentUser.id, subscription_tier: 'free' })
+                            .select(`*, subscription_tiers (*)`)
+                            .single();
+                        
+                        if (createError) throw createError;
+                        userProfile = newProfile;
+                    } else if (error) {
+                        throw error;
+                    } else {
+                        userProfile = data;
+                    }
+                    
+                    updateUI();
+                    await refreshUsageStats();
+                }
+            } catch (error) {
+                log(`Load user data error: ${error.message}`, 'error');
+            }
+        }
+        
+        function updateUI() {
+            const authStatus = document.getElementById('auth-status');
+            const loginForm = document.getElementById('login-form');
+            const userInfo = document.getElementById('user-info');
+            
+            if (currentUser && userProfile) {
+                authStatus.className = 'status success';
+                authStatus.textContent = `Signed in as ${currentUser.email}`;
+                loginForm.style.display = 'none';
+                userInfo.style.display = 'block';
+                
+                document.getElementById('user-email').textContent = currentUser.email;
+                document.getElementById('user-tier').textContent = userProfile.subscription_tier || 'free';
+                document.getElementById('user-status').textContent = userProfile.subscription_status || 'active';
+                
+                // Enable test buttons
+                document.getElementById('test-auth-btn').disabled = false;
+                document.getElementById('test-ai-btn').disabled = false;
+                document.getElementById('test-basic-btn').disabled = false;
+                document.getElementById('test-usage-btn').disabled = false;
+                document.getElementById('usage-btn').disabled = false;
+            } else {
+                authStatus.className = 'status info';
+                authStatus.textContent = 'Not signed in';
+                loginForm.style.display = 'block';
+                userInfo.style.display = 'none';
+                
+                // Disable test buttons
+                document.getElementById('test-auth-btn').disabled = true;
+                document.getElementById('test-ai-btn').disabled = true;
+                document.getElementById('test-basic-btn').disabled = true;
+                document.getElementById('test-usage-btn').disabled = true;
+                document.getElementById('usage-btn').disabled = true;
+            }
+        }
+        
+        async function upgradeTier(tier = 'pro') {
+            try {
+                log(`Upgrading user to ${tier} tier...`, 'info');
+                const { data, error } = await supabase
+                    .from('user_profiles')
+                    .update({ subscription_tier: tier })
+                    .eq('id', currentUser.id)
+                    .select(`*, subscription_tiers (*)`)
+                    .single();
+                
+                if (error) throw error;
+                
+                userProfile = data;
+                updateUI();
+                log(`Successfully upgraded to ${tier} tier`, 'success');
+            } catch (error) {
+                log(`Upgrade error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Pro Engine Test Functions
+        async function testProEngineHealth() {
+            const resultsDiv = document.getElementById('pro-engine-results');
+            resultsDiv.innerHTML = 'Testing health endpoints...\n';
+            
+            try {
+                const desktopResponse = await fetch('http://localhost:3006/health');
+                const desktopData = await desktopResponse.json();
+                resultsDiv.innerHTML += `Desktop Service: ${JSON.stringify(desktopData, null, 2)}\n\n`;
+            } catch (error) {
+                resultsDiv.innerHTML += `Desktop Service Error: ${error.message}\n\n`;
+            }
+            
+            try {
+                const webResponse = await fetch('http://localhost:3002/health');
+                const webData = await webResponse.json();
+                resultsDiv.innerHTML += `Web Service: ${JSON.stringify(webData, null, 2)}\n`;
+            } catch (error) {
+                resultsDiv.innerHTML += `Web Service Error: ${error.message}\n`;
+            }
+        }
+        
+        async function testProEngineCapabilities() {
+            const resultsDiv = document.getElementById('pro-engine-results');
+            resultsDiv.innerHTML = 'Testing capabilities...\n';
+            
+            try {
+                const response = await fetch('http://localhost:3006/api/capabilities');
+                const data = await response.json();
+                resultsDiv.innerHTML += JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultsDiv.innerHTML += `Capabilities Error: ${error.message}`;
+            }
+        }
+        
+        async function testProEngineAuth() {
+            const resultsDiv = document.getElementById('pro-engine-results');
+            resultsDiv.innerHTML = 'Testing Pro Engine authorization...\n';
+            
+            if (!currentUser) {
+                resultsDiv.innerHTML += 'Error: Not signed in\n';
+                return;
+            }
+            
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                const token = session?.access_token;
+                
+                if (!token) {
+                    resultsDiv.innerHTML += 'Error: No access token\n';
+                    return;
+                }
+                
+                // Test AI access endpoint
+                const response = await fetch('http://localhost:3006/api/process-with-ai', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        sessionId: 'test-session',
+                        imageData: 'data:image/png;base64,test',
+                        scaleFactor: 2
+                    })
+                });
+                
+                const data = await response.json();
+                resultsDiv.innerHTML += `Status: ${response.status}\n`;
+                resultsDiv.innerHTML += JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultsDiv.innerHTML += `Authorization Test Error: ${error.message}`;
+            }
+        }
+        
+        // Authorization Test Functions
+        async function testAIAccess() {
+            const resultsDiv = document.getElementById('auth-results');
+            resultsDiv.innerHTML = 'Testing AI access authorization...\n';
+            
+            if (!currentUser) {
+                resultsDiv.innerHTML += 'Error: Not signed in\n';
+                return;
+            }
+            
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                const token = session?.access_token;
+                
+                // Create a minimal SubscriptionVerifier test
+                const testData = {
+                    userToken: token,
+                    tier: userProfile?.subscription_tier || 'free',
+                    requiredTier: 'pro'
+                };
+                
+                resultsDiv.innerHTML += `User Tier: ${testData.tier}\n`;
+                resultsDiv.innerHTML += `Required Tier: ${testData.requiredTier}\n`;
+                
+                if (['pro', 'admin'].includes(testData.tier)) {
+                    resultsDiv.innerHTML += 'Result: ✅ AI Access GRANTED\n';
+                    log('AI access granted for user', 'success');
+                } else {
+                    resultsDiv.innerHTML += 'Result: ❌ AI Access DENIED\n';
+                    log('AI access denied - requires Pro or Admin subscription', 'warning');
+                }
+            } catch (error) {
+                resultsDiv.innerHTML += `AI Access Test Error: ${error.message}`;
+            }
+        }
+        
+        async function testBasicAccess() {
+            const resultsDiv = document.getElementById('auth-results');
+            resultsDiv.innerHTML = 'Testing basic processing access...\n';
+            
+            if (!currentUser) {
+                resultsDiv.innerHTML += 'Error: Not signed in\n';
+                return;
+            }
+            
+            const tier = userProfile?.subscription_tier || 'free';
+            resultsDiv.innerHTML += `User Tier: ${tier}\n`;
+            resultsDiv.innerHTML += 'Basic Processing: ✅ ALLOWED (all tiers)\n';
+            resultsDiv.innerHTML += 'High-res Processing: ✅ ALLOWED (all tiers)\n';
+            
+            log('Basic access test completed', 'success');
+        }
+        
+        async function testUsageLimits() {
+            const resultsDiv = document.getElementById('auth-results');
+            resultsDiv.innerHTML = 'Testing usage limits...\n';
+            
+            if (!currentUser) {
+                resultsDiv.innerHTML += 'Error: Not signed in\n';
+                return;
+            }
+            
+            try {
+                const { data, error } = await supabase
+                    .rpc('check_usage_limit', {
+                        user_uuid: currentUser.id,
+                        processing_type_param: 'ai_enhancement'
+                    });
+                
+                if (error) throw error;
+                
+                const result = data[0];
+                resultsDiv.innerHTML += `Processing Type: ai_enhancement\n`;
+                resultsDiv.innerHTML += `Current Usage: ${result.current_usage}\n`;
+                resultsDiv.innerHTML += `Limit: ${result.limit_value === -1 ? 'Unlimited' : result.limit_value}\n`;
+                resultsDiv.innerHTML += `Allowed: ${result.allowed ? '✅ YES' : '❌ NO'}\n`;
+                resultsDiv.innerHTML += `Reason: ${result.reason}\n`;
+            } catch (error) {
+                resultsDiv.innerHTML += `Usage Limits Test Error: ${error.message}`;
+            }
+        }
+        
+        async function refreshUsageStats() {
+            if (!currentUser) return;
+            
+            try {
+                const { data, error } = await supabase
+                    .from('monthly_usage')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('month', new Date().toISOString().slice(0, 7) + '-01');
+                
+                if (error) throw error;
+                
+                const stats = { standard: 0, highres: 0, ai_enhancement: 0 };
+                data.forEach(row => {
+                    stats[row.processing_type] = row.usage_count;
+                });
+                
+                document.getElementById('standard-usage').textContent = stats.standard;
+                document.getElementById('highres-usage').textContent = stats.highres;
+                document.getElementById('ai-usage').textContent = stats.ai_enhancement;
+                
+                log('Usage stats refreshed', 'success');
+            } catch (error) {
+                log(`Usage stats error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            log('Initializing Pro Engine Authentication Test...', 'info');
+            await checkProEngineStatus();
+            await loadUserData();
+            
+            // Listen for auth state changes
+            supabase.auth.onAuthStateChange((event, session) => {
+                log(`Auth state changed: ${event}`, 'info');
+                if (event === 'SIGNED_IN') {
+                    currentUser = session.user;
+                    loadUserData();
+                } else if (event === 'SIGNED_OUT') {
+                    currentUser = null;
+                    userProfile = null;
+                    updateUI();
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

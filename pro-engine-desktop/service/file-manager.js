@@ -4,21 +4,17 @@ const os = require('os');
 
 class FileManager {
     constructor() {
-        this.outputDirectory = null;
+        this.outputDirectory = '/home/mranderson/Downloads/ProUpscaler';
     }
     
     async initialize() {
-        // Create output directory in user's Downloads folder
-        this.outputDirectory = path.join(os.homedir(), 'Downloads', 'ProUpscaler');
-        
+        // Always use /home/mranderson/Downloads/ProUpscaler
         try {
             await fs.mkdir(this.outputDirectory, { recursive: true });
             console.log(`📁 Output directory: ${this.outputDirectory}`);
         } catch (error) {
             console.error('Failed to create output directory:', error);
-            // Fallback to temp directory
-            this.outputDirectory = path.join(os.tmpdir(), 'ProUpscaler');
-            await fs.mkdir(this.outputDirectory, { recursive: true });
+            // Do not fallback, always use the specified directory
         }
     }
     

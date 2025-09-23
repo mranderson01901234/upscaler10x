@@ -17,42 +17,34 @@
         <!-- Header Pill -->
         <header class="header-pill">
             <div class="header-content">
-                <!-- Left side: Logo and Pro Engine status -->
-                <div class="left-section" style="display: flex; align-items: center; gap: 1rem;">
+                <div class="logo-section" style="display: flex; align-items: center; gap: 0.75rem;">
                     <h1>Pro Upscaler</h1>
-                    <div id="pro-engine-status" class="status-indicator">
-                        <span class="status-circle" id="status-circle">●</span>
-                        <span>Pro Engine</span>
+                    <button id="header-upload-btn" class="header-button" title="Upload Image" style="padding: 0.4em 0.9em; font-size: 1em; display: flex; align-items: center; gap: 0.4em;">
+                        <svg style="height: 1.2em; width: 1.2em;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span style="font-weight: 500;">Upload</span>
+                    </button>
+                    <input type="file" id="header-file-input" accept="image/*" class="hidden">
+                    
+                    <!-- Download Button -->
+                    <div class="download-button-container" style="position: relative;">
+                        <button id="header-download-btn" class="header-button" title="Download Upscaled Image" style="padding: 0.4em 0.9em; font-size: 1em; display: flex; align-items: center; gap: 0.4em; opacity: 0.5; cursor: not-allowed;" disabled>
+                            <svg style="height: 1.2em; width: 1.2em;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m0 0l-3-3m3 3l3-3M5 21h14"/>
+                            </svg>
+                            <span style="font-weight: 500;">Download</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Right side: Action buttons and Auth -->
-                <div class="right-section" style="display: flex; align-items: center; gap: 1rem;">
-                    <!-- Action Buttons -->
-                    <div class="action-buttons" style="display: flex; align-items: center; gap: 0.75rem;">
-                        <button id="header-upload-btn" class="action-button upload-button" title="Upload Image" style="padding: 0.375em; font-size: 1em; display: flex; align-items: center; justify-content: center;">
-                            <svg style="height: 1em; width: 1em;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                            </svg>
-                        </button>
-                        <input type="file" id="header-file-input" accept="image/*" class="hidden">
-                        
-                        <!-- Download Button -->
-                        <div class="download-button-container" style="position: relative;">
-                            <button id="header-download-btn" class="action-button download-button" title="Download Upscaled Image" style="padding: 0.375em; font-size: 1em; display: flex; align-items: center; justify-content: center; opacity: 0.5; cursor: not-allowed;" disabled>
-                                <svg style="height: 1em; width: 1em;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m0 0l-3-3m3 3l3-3M5 21h14"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-
+                <div class="status-section">
                     <!-- User Authentication Section -->
                     <div class="user-section">
                         <!-- When signed out -->
                         <div id="signed-out-state">
-                            <button id="signin-button" class="auth-button primary-auth">Sign In</button>
-                            <button id="signup-button" class="auth-button secondary-auth">Sign Up</button>
+                            <button id="signin-button" class="header-button">Sign In</button>
+                            <button id="signup-button" class="header-button secondary">Sign Up</button>
                         </div>
                         
                         <!-- When signed in -->
@@ -71,6 +63,7 @@
                             </div>
                         </div>
                     </div>
+                    <div id="pro-engine-status" class="status-indicator">🔧 Checking Pro Engine...</div>
                 </div>
             </div>
         </header>
@@ -233,13 +226,10 @@
                         <div class="form-group">
                             <label class="form-label text-xxs" for="output-format">Output Format</label>
                             <select id="output-format" class="select compact-select">
-                                <option value="jpeg" selected>JPEG (Fast, Compressed)</option>
-                                <option value="png">PNG (Uncompressed, Larger)</option>
-                                <option value="tiff">TIFF (Professional, Largest)</option>
+                                <option value="png" selected>PNG (Best Quality)</option>
+                                <option value="jpeg">JPEG (Balanced)</option>
+                                <option value="webp">WebP (Modern)</option>
                             </select>
-                            <div class="format-info text-xxs text-muted-foreground" id="format-info" style="margin-top: 4px; font-size: 10px;">
-                                Fast processing, compressed files
-                            </div>
                         </div>
 
                         <div class="form-group">

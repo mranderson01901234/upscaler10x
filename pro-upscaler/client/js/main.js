@@ -4,10 +4,41 @@ class ProUpscalerApp {
         this.currentImage = null;
         this.processedResult = null;
         this.startTime = null;
+        this.downloadAfterProcessing = false;
+        this.browser = this.detectBrowser();
         
         this.initializeApp();
         this.bindEvents();
     }
+    
+    // Browser detection for sidebar optimizations
+    detectBrowser() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        const isFirefox = userAgent.includes('firefox');
+        const isChrome = userAgent.includes('chrome') && !userAgent.includes('edg');
+        const isSafari = userAgent.includes('safari') && !userAgent.includes('chrome');
+        const isEdge = userAgent.includes('edg');
+        
+        let browserType = 'unknown';
+        if (isFirefox) browserType = 'firefox';
+        else if (isChrome) browserType = 'chrome';
+        else if (isSafari) browserType = 'safari';
+        else if (isEdge) browserType = 'edge';
+        
+        console.log(`🌐 Browser detected: ${browserType}`);
+        
+        // Apply browser-specific CSS class to body
+        document.body.classList.add(`browser-${browserType}`);
+        
+        return {
+            type: browserType,
+            isFirefox,
+            isChrome,
+            isSafari,
+            isEdge
+        };
+    }
+
     
     initializeApp() {
         console.log('🚀 Pro Upscaler Starting...');
@@ -29,16 +60,48 @@ class ProUpscalerApp {
         // Initialize file settings
         this.customDownloadLocation = null;
         
-        this.updateProStatus();
+        // Initialize authentication
+        this.authService = window.authService;
+        this.proEngineDownloader = new window.ProEngineDownloader(this.authService);
+        this.proEngineAvailable = false;
+        this.initializeAuth();
+        
+        // Set initial checking state - delay slightly to ensure DOM is ready
+        setTimeout(() => {
+            this.setProStatusChecking();
+        }, 100);
         this.updateUIState('idle');
+    }
+    
+    async initializeAuth() {
+        // Check if user is already signed in
+        const user = await this.authService.getCurrentUser();
+        if (user) {
+            this.updateUIForSignedInUser(user);
+            this.updateUsageDisplay();
+            await this.checkProEngineAvailability();
+        } else {
+            this.updateUIForSignedOutUser();
+        }
+
+        // Set up auth event listeners
+        this.setupAuthEventListeners();
     }
     
     bindEvents() {
         const fileInput = document.getElementById('file-input');
         const uploadArea = document.getElementById('upload-area');
+        const headerUploadBtn = document.getElementById('header-upload-btn');
+        const headerFileInput = document.getElementById('header-file-input');
         
         if (fileInput) {
             fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        }
+        if (headerFileInput) {
+            headerFileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        }
+        if (headerUploadBtn && headerFileInput) {
+            headerUploadBtn.addEventListener('click', () => headerFileInput.click());
         }
         
         if (uploadArea) {
@@ -49,23 +112,108 @@ class ProUpscalerApp {
         }
         
         document.getElementById('start-processing')?.addEventListener('click', () => this.startUpscaling());
-        document.getElementById('output-format')?.addEventListener('change', () => this.updateFormatOptions());
-        document.getElementById('scale-factor')?.addEventListener('change', () => this.updateEstimates());
-        document.getElementById('processing-mode')?.addEventListener('change', () => this.updateProcessingMode());
+        document.getElementById('output-format')?.addEventListener('change', () => {
+            this.updateFormatOptions();
+            this.handleSettingsChange();
+        });
+        document.getElementById('scale-factor')?.addEventListener('change', () => {
+            this.updateEstimates();
+            this.handleSettingsChange();
+        });
+        document.getElementById('processing-mode')?.addEventListener('change', () => {
+            this.updateProcessingMode();
+            this.handleSettingsChange();
+        });
         document.getElementById('quality-slider')?.addEventListener('input', (e) => {
             document.getElementById('quality-value').textContent = e.target.value;
             this.updateEstimates();
+            this.handleSettingsChange();
+        });
+        document.getElementById('ai-enhancement-toggle')?.addEventListener('change', () => {
+            this.updateEstimates();
+            this.updateProcessingButtonText(); // Update button text when AI toggle changes
+            this.handleSettingsChange();
         });
         
         // File settings event handlers
-        document.getElementById('custom-filename')?.addEventListener('input', () => this.validateCustomFilename());
+        document.getElementById('custom-filename')?.addEventListener('input', () => {
+            this.validateCustomFilename();
+            this.handleSettingsChange();
+        });
         document.getElementById('browse-location')?.addEventListener('click', () => this.browseDownloadLocation());
         
+        // Download button event handlers
+        this.setupDownloadEventListeners();
+        
         // Bind left panel buttons (sidebar results removed)
-        document.getElementById('download-button-left')?.addEventListener('click', () => this.downloadResult());
         document.getElementById('process-another-left')?.addEventListener('click', () => this.resetToUpload());
         
-        document.getElementById('upgrade-prompt')?.addEventListener('click', () => this.showUpgradeModal());
+
+    }
+    
+    setupDownloadEventListeners() {
+        const downloadBtn = document.getElementById('header-download-btn');
+        
+        // Direct download button click - downloads upscaled image
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!downloadBtn.disabled) {
+                    this.downloadResult();
+                }
+            });
+        }
+    }
+    
+    setupAuthEventListeners() {
+        // Sign in button
+        document.getElementById('signin-button')?.addEventListener('click', () => {
+            this.showAuthModal('signin');
+        });
+
+        // Sign up button
+        document.getElementById('signup-button')?.addEventListener('click', () => {
+            this.showAuthModal('signup');
+        });
+
+        // Modal form handlers
+        document.getElementById('signin-form')?.addEventListener('submit', (e) => {
+            this.handleSignIn(e);
+        });
+
+        document.getElementById('signup-form')?.addEventListener('submit', (e) => {
+            this.handleSignUp(e);
+        });
+
+        // Sign out
+        document.getElementById('signout-button')?.addEventListener('click', () => {
+            this.handleSignOut();
+        });
+
+        // Modal close
+        document.getElementById('auth-modal-close')?.addEventListener('click', () => {
+            this.hideAuthModal();
+        });
+        
+        // Close modal when clicking overlay
+        document.getElementById('auth-modal')?.addEventListener('click', (e) => {
+            if (e.target.classList.contains('auth-modal-overlay')) {
+                this.hideAuthModal();
+            }
+        });
+
+        // Switch between sign in and sign up
+        document.getElementById('show-signup')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showSignUpForm();
+        });
+
+        document.getElementById('show-signin')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showSignInForm();
+        });
+        
+
     }
     
     handleFileSelect(event) {
@@ -376,19 +524,34 @@ class ProUpscalerApp {
     }
     
     updateImageDetails(imageData, file) {
-        const noImageState = document.getElementById('no-image-state');
-        const imageInfoState = document.getElementById('image-info-state');
+        // Update canvas overlay elements
+        const noImageText = document.getElementById('no-image-text');
+        const imageInfoText = document.getElementById('image-info-text');
+        const dimensionsText = document.getElementById('image-dimensions-text');
+        const sizeText = document.getElementById('image-size-text');
+        const formatText = document.getElementById('image-format-text');
+        
+        // Toggle states
+        if (noImageText && imageInfoText) {
+            noImageText.classList.add('hidden');
+            imageInfoText.classList.remove('hidden');
+        }
+        
+        // Update details in overlay
+        if (dimensionsText) {
+            if (imageData.width === 'unknown' || imageData.height === 'unknown') {
+                dimensionsText.textContent = 'Unknown';
+            } else {
+                dimensionsText.textContent = `${imageData.width} × ${imageData.height}`;
+            }
+        }
+        if (sizeText) sizeText.textContent = this.formatFileSize(file.size);
+        if (formatText) formatText.textContent = file.type.split('/')[1].toUpperCase();
+        
+        // Keep old elements for backward compatibility (if they exist)
         const dimensions = document.getElementById('image-dimensions');
         const size = document.getElementById('image-size');
         const format = document.getElementById('image-format');
-        
-        // Toggle states
-        if (noImageState && imageInfoState) {
-            noImageState.classList.add('hidden');
-            imageInfoState.classList.remove('hidden');
-        }
-        
-        // Update details
         if (dimensions) {
             if (imageData.width === 'unknown' || imageData.height === 'unknown') {
                 dimensions.textContent = 'Unknown';
@@ -403,14 +566,61 @@ class ProUpscalerApp {
     updateFormatOptions() {
         const format = document.getElementById('output-format')?.value;
         const qualityControl = document.getElementById('quality-control');
+        const formatInfo = document.getElementById('format-info');
         
-        if (!format || !qualityControl) return;
+        if (!format) return;
         
-        if (format === 'jpeg' || format === 'webp') {
-            qualityControl.classList.remove('hidden');
-        } else {
-            qualityControl.classList.add('hidden');
+        // Show/hide quality control based on format
+        if (qualityControl) {
+            if (format === 'jpeg') {
+                qualityControl.classList.remove('hidden');
+            } else {
+                qualityControl.classList.add('hidden');
+            }
         }
+        
+        // Update format information text
+        if (formatInfo) {
+            const scaleFactor = parseInt(document.getElementById('scale-factor')?.value) || 10;
+            const currentImagePixels = this.currentImage ? (this.currentImage.width * this.currentImage.height) : 6000000;
+            const targetPixels = currentImagePixels * scaleFactor * scaleFactor;
+            const targetMP = (targetPixels / 1000000).toFixed(0);
+            
+            let infoText = '';
+            let processingTime = '';
+            let fileSize = '';
+            
+            switch (format) {
+                case 'jpeg':
+                    processingTime = 'Fastest processing';
+                    fileSize = `~${Math.round(targetPixels * 0.3 / 1024 / 1024)}MB`;
+                    infoText = `${processingTime}, compressed files (${fileSize})`;
+                    break;
+                case 'png':
+                    processingTime = 'Slower processing';
+                    fileSize = `~${Math.round(targetPixels * 4 / 1024 / 1024)}MB`;
+                    infoText = `${processingTime}, uncompressed quality (${fileSize})`;
+                    break;
+                case 'tiff':
+                    processingTime = 'Moderate processing';
+                    fileSize = `~${Math.round(targetPixels * 3 / 1024 / 1024)}MB`;
+                    infoText = `${processingTime}, professional quality (${fileSize})`;
+                    break;
+            }
+            
+            formatInfo.textContent = infoText;
+            
+            // Add warning for very large files
+            if (targetPixels > 500000000) { // 500MP+
+                formatInfo.style.color = format === 'jpeg' ? '#10b981' : '#f59e0b';
+                if (format !== 'jpeg') {
+                    formatInfo.textContent += ' - Large file warning!';
+                }
+            } else {
+                formatInfo.style.color = '#6b7280';
+            }
+        }
+        
         this.updateEstimates();
     }
 
@@ -468,11 +678,16 @@ class ProUpscalerApp {
         const estimatedSize = this.estimateFileSize(outputWidth, outputHeight, format, quality);
         const estimatedTime = this.estimateProcessingTime(outputWidth, outputHeight);
         
-        // Update UI elements
+        // Update UI elements - both overlay and original locations
         const currentSizeEl = document.getElementById('current-size');
         const outputDimensions = document.getElementById('output-dimensions');
         const estimatedSizeEl = document.getElementById('estimated-size');
         const estimatedTimeEl = document.getElementById('estimated-time');
+        
+        // Update canvas overlay elements
+        const outputDimensionsText = document.getElementById('output-dimensions-text');
+        const estimatedSizeText = document.getElementById('estimated-size-text');
+        const estimatedTimeText = document.getElementById('estimated-time-text');
         
         // Show original dimensions (what will actually be processed)
         if (currentSizeEl) {
@@ -487,10 +702,103 @@ class ProUpscalerApp {
         if (estimatedSizeEl) estimatedSizeEl.textContent = `~${this.formatFileSize(estimatedSize)}`;
         if (estimatedTimeEl) estimatedTimeEl.textContent = `~${estimatedTime}s`;
         
+        // Update canvas overlay elements
+        if (outputDimensionsText) outputDimensionsText.textContent = `${outputWidth} × ${outputHeight}`;
+        if (estimatedSizeText) estimatedSizeText.textContent = `~${this.formatFileSize(estimatedSize)}`;
+        if (estimatedTimeText) estimatedTimeText.textContent = `~${estimatedTime}s`;
+        
         // Update filename preview
         this.updateFilenamePreview(format);
         
-        this.checkUpgradePrompt(estimatedSize);
+
+    }
+    
+    /**
+     * Handle when user changes settings after processing is complete
+     * This re-enables the Start Upscaling button for quick re-processing
+     */
+    handleSettingsChange() {
+        // Only re-enable if we have an image loaded and processing is complete
+        if (this.currentImage && this.currentState === 'complete') {
+            console.log('🔄 Settings changed after completion - re-enabling processing button');
+            this.updateUIState('ready');
+            
+            // Hide any completion modals or overlays
+            this.hideCompletionDisplays();
+            
+            // Update button text to indicate new settings
+            this.updateProcessingButtonText();
+            
+            // Show a subtle notification that settings have changed
+            this.showNotification('Settings updated - ready to process with new settings', 'info');
+        }
+    }
+    
+    /**
+     * Update processing button text based on current state
+     */
+    updateProcessingButtonText() {
+        const button = document.getElementById('start-processing');
+        if (!button) return;
+        
+        const aiToggle = document.getElementById('ai-enhancement-toggle');
+        const isAIEnabled = aiToggle ? aiToggle.checked : false;
+        
+        if (this.currentState === 'ready' && this.processedResult) {
+            // User has changed settings after completion
+            if (isAIEnabled) {
+                button.innerHTML = `
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Re-Process with AI
+                `;
+            } else {
+                button.innerHTML = `
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Re-Process Image
+                `;
+            }
+        } else {
+            // Default state
+            if (isAIEnabled) {
+                button.innerHTML = `
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Start AI Upscaling
+                `;
+            } else {
+                button.innerHTML = `
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Start Upscaling
+                `;
+            }
+        }
+    }
+    
+    /**
+     * Hide completion displays when user changes settings
+     */
+    hideCompletionDisplays() {
+        // Hide results overlay
+        const resultsOverlay = document.getElementById('results-overlay');
+        const completedResultsCard = document.getElementById('completed-results-card');
+        
+        if (resultsOverlay) resultsOverlay.classList.add('hidden');
+        if (completedResultsCard) completedResultsCard.classList.add('hidden');
+        
+        // Remove any completion modals
+        const existingModals = document.querySelectorAll('.fixed.inset-0.bg-black\\/50');
+        existingModals.forEach(modal => {
+            if (modal.innerHTML.includes('Processing Complete')) {
+                modal.remove();
+            }
+        });
     }
     
     estimateFileSize(width, height, format, quality = 95) {
@@ -536,41 +844,38 @@ class ProUpscalerApp {
         }
     }
     
-    checkUpgradePrompt(estimatedSize) {
-        const upgradeCard = document.getElementById('upgrade-card');
-        const canvasLeftPanel = document.querySelector('.canvas-left-panel');
-        if (!upgradeCard) return;
-        
-        const largeSizeThreshold = 400 * 1024 * 1024; // 400MB
-        
-        if (estimatedSize > largeSizeThreshold && !this.proEngine.isAvailable) {
-            upgradeCard.classList.remove('hidden');
-            if (canvasLeftPanel) {
-                canvasLeftPanel.classList.remove('panel-hidden');
-            }
-        } else {
-            upgradeCard.classList.add('hidden');
-            if (canvasLeftPanel) {
-                canvasLeftPanel.classList.add('panel-hidden');
-            }
-        }
-    }
+
 
     async startUpscaling() {
         if (!this.currentImage) return;
         
+        // Check authentication and usage limits first
+        const scaleFactorEl = document.getElementById('scale-factor');
+        const aiEnhancementEl = document.getElementById('ai-enhancement-toggle');
+        const scaleFactor = scaleFactorEl ? parseInt(scaleFactorEl.value) : 2;
+        const aiEnhancement = aiEnhancementEl ? aiEnhancementEl.checked : false;
+        
+        const processingType = this.authService.getProcessingType(scaleFactor, aiEnhancement);
+        const usageCheck = await this.authService.checkUsage(processingType);
+        
+        if (!usageCheck.allowed) {
+            this.showNotification(usageCheck.reason, 'error');
+            if (usageCheck.requiresAuth) {
+                this.showAuthModal('signin');
+            } else {
+    
+            }
+            return;
+        }
+        
         this.startTime = Date.now();
         this.updateUIState('processing');
         
-        const scaleFactorEl = document.getElementById('scale-factor');
         const formatEl = document.getElementById('output-format');
         const qualityEl = document.getElementById('quality-slider');
-        const aiEnhancementEl = document.getElementById('ai-enhancement-toggle');
         
-        const scaleFactor = scaleFactorEl ? parseInt(scaleFactorEl.value) : 2;
         const format = formatEl ? formatEl.value : 'png';
         const quality = qualityEl ? parseInt(qualityEl.value) : 95;
-        const aiEnhancement = aiEnhancementEl ? aiEnhancementEl.checked : false;
         
         try {
             // Check if pro-engine is available - if so, use it immediately
@@ -603,26 +908,38 @@ class ProUpscalerApp {
                     }
                 }
                 
+                // Get format and quality settings
+                const outputFormat = document.getElementById('output-format')?.value || 'jpeg';
+                const quality = parseInt(document.getElementById('quality-slider')?.value) || 90;
+                
                 // Prepare result object for pro-engine
                 const proEngineResult = {
                     dataUrl: imageDataUrl,
                     scaleFactor: scaleFactor,
-                    format: format,
+                    format: outputFormat,
                     quality: quality,
                     width: this.currentImage.width * scaleFactor,
                     height: this.currentImage.height * scaleFactor,
-                    size: this.estimateFileSize(this.currentImage.width * scaleFactor, this.currentImage.height * scaleFactor, format, quality)
+                    size: this.estimateFileSize(this.currentImage.width * scaleFactor, this.currentImage.height * scaleFactor, outputFormat, quality)
                 };
                 
                 this.updateProgress(50, aiEnhancement ? 'Sending to Pro Engine for AI-enhanced upscaling...' : 'Sending to Pro Engine for upscaling...');
                 
-                // Prepare AI enhancement options
                 const processingOptions = {
                     aiEnhancement: aiEnhancement,
                     aiPreferences: {
                         fidelity: 0.05  // Optimized parameter from testing
+                    },
+                    outputPreferences: {
+                        outputFormat: outputFormat,
+                        quality: quality
                     }
                 };
+                
+                console.log(`🎨 User selected format: ${outputFormat.toUpperCase()} (Quality: ${quality}%)`);
+                if (outputFormat !== 'jpeg') {
+                    console.log(`⚠️ ${outputFormat.toUpperCase()} format will take longer and create larger files`);
+                }
                 
                 // Use AI-enhanced processing if available and requested
                 if (aiEnhancement && this.proEngine.desktopServiceAvailable) {
@@ -641,11 +958,18 @@ class ProUpscalerApp {
                 
                 this.updateProgress(100, 'Complete! File saved to Downloads/ProUpscaler/');
                 
+                // Log usage after successful processing
+                if (this.authService.isSignedIn()) {
+                    const imagePixels = this.currentImage.width * this.currentImage.height;
+                    await this.authService.logUsage(processingType, scaleFactor.toString() + 'x', imagePixels, processingTime * 1000);
+                    this.updateUsageDisplay();
+                }
+                
                 // Update UI state to complete
                 this.updateUIState('complete');
                 
-                // Show comprehensive completion modal for large files
-                this.showLargeFileCompletionModal(proEngineResult, processingTime);
+                // Note: Desktop service handles its own completion modal
+                // No need to show additional modal here
                 
                 return; // Exit early - no need for local processing
             }
@@ -687,6 +1011,14 @@ class ProUpscalerApp {
                 quality,
                 (progress, message) => this.updateProgress(progress, message)
             );
+            
+            // Log usage after successful local processing
+            if (this.authService.isSignedIn()) {
+                const imagePixels = this.currentImage.width * this.currentImage.height;
+                const processingTime = Date.now() - this.startTime;
+                await this.authService.logUsage(processingType, scaleFactor.toString() + 'x', imagePixels, processingTime);
+                this.updateUsageDisplay();
+            }
             
             // Handle chunked results according to the proven system
             if (result.chunkedData) {
@@ -747,7 +1079,7 @@ class ProUpscalerApp {
         }
     }
     
-    updateProgress(percent, message) {
+    updateProgress(percent, message, details = null) {
         const progressFill = document.getElementById('progress-fill');
         const progressText = document.getElementById('progress-text');
         const progressPercent = document.getElementById('progress-percent');
@@ -756,9 +1088,35 @@ class ProUpscalerApp {
         
         if (progressFill) progressFill.style.width = `${percent}%`;
         if (progressText) {
-            progressText.textContent = message;
-            // Also update the detailed progress text for better user feedback
-            console.log(`📊 Progress: ${Math.round(percent)}% - ${message}`);
+            let displayMessage = message;
+            
+            // Enhance message with progressive scaling details if available
+            if (details && details.step && details.totalSteps) {
+                displayMessage = `${message} (Step ${details.step}/${details.totalSteps})`;
+                if (details.currentScale) {
+                    displayMessage += ` - ${details.currentScale}x`;
+                }
+            }
+            
+            progressText.textContent = displayMessage;
+            
+            // Enhanced console logging with detailed information
+            let logMessage = `📊 Progress: ${Math.round(percent)}% - ${message}`;
+            if (details) {
+                if (details.step && details.totalSteps) {
+                    logMessage += ` [Step ${details.step}/${details.totalSteps}]`;
+                }
+                if (details.currentScale) {
+                    logMessage += ` [${details.currentScale}x scale]`;
+                }
+                if (details.processingRate) {
+                    logMessage += ` [${details.processingRate}]`;
+                }
+                if (details.memoryMB) {
+                    logMessage += ` [${details.memoryMB}MB RAM]`;
+                }
+            }
+            console.log(logMessage);
         }
         if (progressPercent) progressPercent.textContent = `${Math.round(percent)}%`;
         
@@ -767,7 +1125,16 @@ class ProUpscalerApp {
             elapsedTime.textContent = `${elapsed}s`;
             
             if (percent > 0 && remainingTime) {
-                const estimated = Math.round((elapsed / percent) * (100 - percent));
+                // More accurate time estimation for progressive scaling
+                let estimated = Math.round((elapsed / percent) * (100 - percent));
+                
+                // Adjust estimation for progressive scaling steps
+                if (details && details.step && details.totalSteps && percent < 90) {
+                    const stepsRemaining = details.totalSteps - details.step;
+                    const avgTimePerStep = elapsed / details.step;
+                    estimated = Math.round(stepsRemaining * avgTimePerStep * 1.2); // 20% buffer
+                }
+                
                 remainingTime.textContent = `~${estimated}s`;
             }
         }
@@ -776,13 +1143,22 @@ class ProUpscalerApp {
     showResults(result) {
         this.updateUIState('complete');
         
+        // Auto-download if requested
+        if (this.downloadAfterProcessing) {
+            this.downloadAfterProcessing = false;
+            // Small delay to ensure UI updates, then download
+            setTimeout(() => {
+                this.downloadResult();
+            }, 500);
+        }
+        
         // Update left panel results (primary location)
         const finalDimensionsLeft = document.getElementById('final-dimensions-left');
         const finalSizeLeft = document.getElementById('final-size-left');
         const actualTimeLeft = document.getElementById('actual-time-left');
         const finalFormatLeft = document.getElementById('final-format-left');
         const completedResultsCard = document.getElementById('completed-results-card');
-        const resultsLeftPanel = document.getElementById('results-left-panel');
+        const resultsOverlay = document.getElementById('results-overlay');
         
         // Calculate display values
         let dimensionsText, sizeText, formatText;
@@ -805,12 +1181,33 @@ class ProUpscalerApp {
         if (finalFormatLeft) finalFormatLeft.textContent = formatText;
         if (actualTimeLeft) actualTimeLeft.textContent = timeText;
         
-        // Show left panel results card and make panel visible
+        // Show results overlay
         if (completedResultsCard) completedResultsCard.classList.remove('hidden');
-        if (resultsLeftPanel) resultsLeftPanel.classList.add('show-results');
+        if (resultsOverlay) resultsOverlay.classList.remove('hidden');
         
         // USE NEW PRESENTATION SYSTEM FOR OPTIMAL DISPLAY
         this.presentResultWithNewSystem(result);
+        
+        // Auto-download/save result
+        try {
+            if (this.proEngine && this.proEngine.desktopServiceAvailable) {
+                // Desktop service auto-saves; just inform user
+                this.showNotification('Complete! File saved to Downloads/ProUpscaler/', 'success');
+            } else if (!result.isChunked && !result.chunkedData) {
+                // Browser path: trigger download immediately
+                const format = document.getElementById('output-format')?.value || 'png';
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+                const filename = `upscaled-${result.width}x${result.height}-${timestamp}.${format}`;
+                this.fileHandler.downloadFile(result, filename);
+                this.showDownloadedFilename(filename, 'Downloads/');
+                this.showNotification('Download complete!', 'success');
+            } else {
+                // Chunked preview cannot be fully downloaded here; suggest desktop service
+                this.showNotification('Preview ready. Use Pro Engine for full-resolution save.', 'info');
+            }
+        } catch (e) {
+            console.error('Auto-download error:', e);
+        }
         
         // Log completion with system stats
         const megapixels = ((result.chunkedData ? result.chunkedData.width * result.chunkedData.height : result.width * result.height) / 1000000).toFixed(1);
@@ -936,10 +1333,17 @@ class ProUpscalerApp {
         this.currentImage = null;
         this.processedResult = null;
         this.startTime = null;
+        this.downloadAfterProcessing = false;
         
         // Reset file input
         const fileInput = document.getElementById('file-input');
         if (fileInput) fileInput.value = '';
+        
+        // Update download button state
+        this.updateDownloadButtonState();
+        
+        // Reset canvas overlays
+        this.resetCanvasOverlays();
         
         // Show upload area and hide preview area
         const uploadArea = document.getElementById('upload-area');
@@ -972,13 +1376,13 @@ class ProUpscalerApp {
         
         // No sidebar results to hide anymore
         
-        // Hide left panel results and make panel invisible
+        // Hide results overlay
         const completedResultsCard = document.getElementById('completed-results-card');
-        const resultsLeftPanel = document.getElementById('results-left-panel');
+        const resultsOverlay = document.getElementById('results-overlay');
         const optimizedResultContainer = document.getElementById('optimized-result-container');
         
         if (completedResultsCard) completedResultsCard.classList.add('hidden');
-        if (resultsLeftPanel) resultsLeftPanel.classList.remove('show-results');
+        if (resultsOverlay) resultsOverlay.classList.add('hidden');
         if (optimizedResultContainer) optimizedResultContainer.innerHTML = '';
         
         this.updateUIState('idle');
@@ -988,6 +1392,11 @@ class ProUpscalerApp {
      * Present result with new optimal presentation system
      */
     async presentResultWithNewSystem(result) {
+        // DISABLED: This creates off-screen download buttons that confuse users
+        // Only use the header download button for a clean single-pane UI
+        console.log('Presentation system disabled - using header download button only');
+        return;
+        
         try {
             // Import and use the new presentation system
             const { ImagePresentationManager } = await import('./image-presentation-manager.js');
@@ -1106,6 +1515,325 @@ class ProUpscalerApp {
         return previewCanvas;
     }
 
+    // Authentication UI Methods
+    showAuthModal(mode = 'signin') {
+        const modal = document.getElementById('auth-modal');
+        modal.classList.remove('hidden');
+        
+        if (mode === 'signin') {
+            this.showSignInForm();
+        } else {
+            this.showSignUpForm();
+        }
+    }
+
+    hideAuthModal() {
+        const modal = document.getElementById('auth-modal');
+        modal.classList.add('hidden');
+        
+        // Clear form inputs
+        document.getElementById('signin-email').value = '';
+        document.getElementById('signin-password').value = '';
+        document.getElementById('signup-email').value = '';
+        document.getElementById('signup-password').value = '';
+        document.getElementById('signup-confirm').value = '';
+    }
+
+    showEmailVerificationMessage(email) {
+        // Update the modal content to show email verification message
+        const modal = document.getElementById('auth-modal');
+        const modalContent = modal.querySelector('.auth-modal-content');
+        
+        modalContent.innerHTML = `
+            <div class="auth-modal-header">
+                <h2>Check Your Email</h2>
+                <button id="auth-modal-close" class="auth-modal-close">&times;</button>
+            </div>
+            <div class="auth-verification-message">
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">📧</div>
+                    <h3 style="margin-bottom: 12px; color: var(--foreground);">Verification Email Sent</h3>
+                    <p style="color: var(--muted-foreground); margin-bottom: 16px; line-height: 1.5;">
+                        We've sent a verification link to:<br>
+                        <strong style="color: var(--foreground);">${email}</strong>
+                    </p>
+                    <p style="color: var(--muted-foreground); font-size: 14px; margin-bottom: 20px;">
+                        Click the link in your email to activate your account, then return here to sign in.
+                    </p>
+                    <button id="verification-done-btn" class="auth-button" style="margin-top: 12px;">
+                        I've Verified My Email
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Re-attach close event listener
+        modalContent.querySelector('#auth-modal-close').addEventListener('click', () => {
+            this.hideAuthModal();
+        });
+
+        // Handle "I've verified" button
+        modalContent.querySelector('#verification-done-btn').addEventListener('click', () => {
+            this.restoreAuthModal();
+            this.showSignInForm();
+            this.showNotification('Please sign in with your verified account', 'info');
+        });
+
+        // Auto-hide after 10 seconds with countdown
+        this.startVerificationCountdown();
+        // Also allow pressing Enter to close and switch to sign in
+        modalContent.querySelector('#verification-done-btn').addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                this.restoreAuthModal();
+                this.showSignInForm();
+                this.showNotification('Please sign in with your verified account', 'info');
+            }
+        });
+    }
+
+    startVerificationCountdown() {
+        let countdown = 10;
+        const updateCountdown = () => {
+            const btn = document.getElementById('verification-done-btn');
+            if (btn && countdown > 0) {
+                btn.textContent = `Auto-close in ${countdown}s`;
+                countdown--;
+                setTimeout(updateCountdown, 1000);
+            } else if (btn) {
+                this.hideAuthModal();
+                this.showNotification('You can sign in once you\'ve verified your email', 'info');
+            }
+        };
+        setTimeout(updateCountdown, 3000); // Start countdown after 3 seconds
+    }
+
+    restoreAuthModal() {
+        // Restore the original modal content
+        const modal = document.getElementById('auth-modal');
+        const modalContent = modal.querySelector('.auth-modal-content');
+        
+        modalContent.innerHTML = `
+            <div class="auth-modal-header">
+                <h2 id="auth-modal-title">Sign In</h2>
+                <button id="auth-modal-close" class="auth-modal-close">&times;</button>
+            </div>
+            
+            <!-- Sign In Form -->
+            <form id="signin-form" class="auth-form">
+                <div class="form-group">
+                    <label for="signin-email">Email</label>
+                    <input type="email" id="signin-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="signin-password">Password</label>
+                    <input type="password" id="signin-password" required>
+                </div>
+                <button type="submit" class="auth-button">Sign In</button>
+                <p class="auth-switch">
+                    Don't have an account? 
+                    <a href="#" id="show-signup">Sign up</a>
+                </p>
+            </form>
+            
+            <!-- Sign Up Form -->
+            <form id="signup-form" class="auth-form hidden">
+                <div class="form-group">
+                    <label for="signup-email">Email</label>
+                    <input type="email" id="signup-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Password</label>
+                    <input type="password" id="signup-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-confirm">Confirm Password</label>
+                    <input type="password" id="signup-confirm" required>
+                </div>
+                <button type="submit" class="auth-button">Create Account</button>
+                <p class="auth-switch">
+                    Already have an account? 
+                    <a href="#" id="show-signin">Sign in</a>
+                </p>
+            </form>
+        `;
+
+        // Re-attach all event listeners
+        this.attachModalEventListeners();
+    }
+
+    attachModalEventListeners() {
+        // Modal form handlers
+        document.getElementById('signin-form')?.addEventListener('submit', (e) => {
+            this.handleSignIn(e);
+        });
+
+        document.getElementById('signup-form')?.addEventListener('submit', (e) => {
+            this.handleSignUp(e);
+        });
+
+        // Modal close
+        document.getElementById('auth-modal-close')?.addEventListener('click', () => {
+            this.hideAuthModal();
+        });
+
+        // Switch between sign in and sign up
+        document.getElementById('show-signup')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showSignUpForm();
+        });
+
+        document.getElementById('show-signin')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showSignInForm();
+        });
+    }
+
+    showSignInForm() {
+        document.getElementById('auth-modal-title').textContent = 'Sign In';
+        document.getElementById('signin-form').classList.remove('hidden');
+        document.getElementById('signup-form').classList.add('hidden');
+    }
+
+    showSignUpForm() {
+        document.getElementById('auth-modal-title').textContent = 'Create Account';
+        document.getElementById('signin-form').classList.add('hidden');
+        document.getElementById('signup-form').classList.remove('hidden');
+    }
+
+    async handleSignIn(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('signin-email').value;
+        const password = document.getElementById('signin-password').value;
+
+        try {
+            const result = await this.authService.signIn(email, password);
+            this.hideAuthModal();
+            this.updateUIForSignedInUser(result.user);
+            this.updateUsageDisplay();
+            this.showNotification('Successfully signed in!', 'success');
+        } catch (error) {
+            this.showNotification(error.message, 'error');
+        }
+    }
+
+    async handleSignUp(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('signup-email').value;
+        const password = document.getElementById('signup-password').value;
+        const confirm = document.getElementById('signup-confirm').value;
+        const submitBtn = (e.submitter) ? e.submitter : document.querySelector('#signup-form .auth-button');
+
+        if (password !== confirm) {
+            this.showNotification('Passwords do not match', 'error');
+            return;
+        }
+
+        if (password.length < 6) {
+            this.showNotification('Password must be at least 6 characters long', 'error');
+            return;
+        }
+
+        // Loading state
+        if (submitBtn) {
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating account...';
+        }
+
+        try {
+            const result = await this.authService.signUp(email, password);
+            
+            // Check if email verification is required
+            if (result.user && !result.user.email_confirmed_at) {
+                // Show email verification message immediately
+                this.showEmailVerificationMessage(email);
+            } else if (result.user) {
+                // User is immediately signed in (email confirmation disabled)
+                this.hideAuthModal();
+                this.updateUIForSignedInUser(result.user);
+                this.updateUsageDisplay();
+                this.showNotification('Account created successfully!', 'success');
+            }
+        } catch (error) {
+            // Handle the specific case where email verification is required
+            if (error.message.includes('check your email for verification')) {
+                this.showEmailVerificationMessage(email);
+            } else {
+                this.showNotification(error.message, 'error');
+                // Reset button so user can try again
+                if (submitBtn) {
+                    submitBtn.classList.remove('loading');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Create Account';
+                }
+            }
+        }
+    }
+
+    async handleSignOut() {
+        await this.authService.signOut();
+        this.updateUIForSignedOutUser();
+        this.showNotification('Signed out successfully', 'success');
+    }
+
+    updateUIForSignedInUser(user) {
+        document.getElementById('signed-out-state').classList.add('hidden');
+        document.getElementById('signed-in-state').classList.remove('hidden');
+        
+        document.getElementById('user-email').textContent = user.email;
+        
+        const profile = this.authService.getUserProfile();
+        if (profile) {
+            const tierBadge = document.getElementById('user-tier');
+            tierBadge.textContent = profile.subscription_tier;
+            tierBadge.className = `tier-badge ${profile.subscription_tier}`;
+        }
+        
+        this.updateUsageDisplay();
+    }
+
+    updateUIForSignedOutUser() {
+        document.getElementById('signed-out-state').classList.remove('hidden');
+        document.getElementById('signed-in-state').classList.add('hidden');
+        
+        // Reset usage display
+        document.getElementById('standard-usage').textContent = '-';
+        document.getElementById('highres-usage').textContent = '-';
+        document.getElementById('ai-usage').textContent = '-';
+        
+
+    }
+
+    async updateUsageDisplay() {
+        if (!this.authService.isSignedIn()) return;
+
+        try {
+            const stats = await this.authService.getUsageStats();
+            const profile = this.authService.getUserProfile();
+            
+            if (stats && profile) {
+                const tier = profile.subscription_tiers;
+                
+                // Update usage counters
+                document.getElementById('standard-usage').textContent = 
+                    tier.max_2x_4x === -1 ? `${stats.standard} (unlimited)` : `${stats.standard}/${tier.max_2x_4x}`;
+                
+                document.getElementById('highres-usage').textContent = 
+                    tier.max_8x === -1 ? `${stats.highres} (unlimited)` : (tier.max_8x === 0 ? 'locked' : `${stats.highres}/${tier.max_8x}`);
+                
+                document.getElementById('ai-usage').textContent = 
+                    tier.max_ai_enhancements === -1 ? `${stats.ai_enhancement} (unlimited)` : `${stats.ai_enhancement}/${tier.max_ai_enhancements}`;
+                
+
+            }
+        } catch (error) {
+            console.error('Failed to update usage display:', error);
+        }
+    }
+
     // Cleanup resources when app is closed
     cleanup() {
         if (this.upscaler && typeof this.upscaler.cleanup === 'function') {
@@ -1122,102 +1850,81 @@ class ProUpscalerApp {
         // Show appropriate state and buttons
         switch (state) {
             case 'idle':
-                // Progress footer always visible - just ensure it's shown
-                if (progressFooter) progressFooter.classList.remove('hidden');
+                // Hide progress footer when idle
+                if (progressFooter) progressFooter.classList.add('hidden');
                 if (startButton) {
                     startButton.disabled = true;
                 }
+                this.updateProcessingButtonText();
                 break;
             case 'ready':
-                // Progress footer always visible - just ensure it's shown
-                if (progressFooter) progressFooter.classList.remove('hidden');
+                // Hide progress footer when ready
+                if (progressFooter) progressFooter.classList.add('hidden');
                 if (startButton) {
                     startButton.disabled = false;
                 }
+                this.updateProcessingButtonText();
                 break;
             case 'processing':
-                // Progress footer always visible - ensure it's shown
+                // Show progress footer during processing
                 if (progressFooter) progressFooter.classList.remove('hidden');
                 if (startButton) {
                     startButton.disabled = true;
                 }
+                // Don't update button text during processing
                 break;
             case 'complete':
-                // Progress footer always visible - keep it shown
-                if (progressFooter) progressFooter.classList.remove('hidden');
-                // Note: Download and Process Another buttons are now in the left panel
-                // They're shown via the showResults() method when the left panel is displayed
+                // Hide progress footer when complete
+                if (progressFooter) progressFooter.classList.add('hidden');
+                // Note: Download and Process Another buttons are now in the results overlay
+                // They're shown via the showResults() method when the overlay is displayed
+                this.updateProcessingButtonText();
                 break;
         }
+        
+        // Update download button state whenever UI state changes
+        this.updateDownloadButtonState();
     }
     
     updateProStatus() {
-        const proStatus = document.getElementById('pro-status');
-        if (!proStatus) return;
+        const proEngineStatus = document.getElementById('pro-engine-status');
+        const statusCircle = document.getElementById('status-circle');
         
-        const statusIndicator = proStatus.querySelector('.h-2');
-        const statusText = proStatus.querySelector('span:last-child');
+        if (!proEngineStatus || !statusCircle) return;
+        
+        // Remove all status classes first
+        statusCircle.classList.remove('online', 'checking');
         
         if (this.proEngine.isAvailable) {
-            if (statusIndicator) statusIndicator.className = 'h-2 w-2 rounded-full bg-blue-500';
-            if (statusText) statusText.textContent = 'Pro Engine Ready';
-            proStatus.className = 'pro-status flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400';
+            statusCircle.classList.add('online');
+            console.log('✅ Pro Engine status updated: Online');
+        } else {
+            // Default red color (no class needed, it's the default in CSS)
+            console.log('❌ Pro Engine status updated: Offline');
         }
     }
     
-    showUpgradeModal() {
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
-        modal.innerHTML = `
-            <div class="bg-card border border-border rounded-lg max-w-md w-full p-6 space-y-4">
-                <div class="text-center">
-                    <h2 class="text-xl font-semibold mb-2">Upgrade to Pro</h2>
-                    <p class="text-muted-foreground">Unlock lightning-fast downloads for large files</p>
-                </div>
-                
-                <div class="space-y-3 text-sm">
-                    <div class="flex items-center space-x-3">
-                        <span class="text-emerald-500">✓</span>
-                        <span>10× faster downloads</span>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <span class="text-emerald-500">✓</span>
-                        <span>Background processing</span>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <span class="text-emerald-500">✓</span>
-                        <span>All format options</span>
-                    </div>
-                </div>
-                
-                <div class="flex space-x-3">
-                    <button class="btn-primary flex-1" onclick="window.open('/upgrade', '_blank')">
-                        Upgrade Now
-                    </button>
-                    <button class="btn-secondary" onclick="this.parentElement.parentElement.parentElement.remove()">
-                        Maybe Later
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.remove();
-        });
+    setProStatusChecking() {
+        const statusCircle = document.getElementById('status-circle');
+        if (statusCircle) {
+            statusCircle.classList.remove('online');
+            statusCircle.classList.add('checking');
+            console.log('🔄 Pro Engine status: Checking...');
+        }
     }
     
+
+
+
+    
     showNotification(message, type = 'info') {
+        const container = document.getElementById('canvas-notifications');
+        const host = container || document.body;
         const notification = document.createElement('div');
-        notification.className = `fixed top-12 right-4 p-3 rounded-lg shadow-lg z-40 max-w-sm text-sm ${
-            type === 'error' ? 'bg-red-500 text-white' :
-            type === 'success' ? 'bg-emerald-500 text-white' :
-            type === 'warning' ? 'bg-amber-500 text-white' :
-            'bg-card border border-border'
-        }`;
+        notification.className = `canvas-notification-item ${type}`;
         notification.textContent = message;
         
-        document.body.appendChild(notification);
+        host.appendChild(notification);
         setTimeout(() => notification.remove(), 3000);
     }
     
@@ -1235,15 +1942,31 @@ class ProUpscalerApp {
         const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const expectedFilename = `upscaled-${sessionId}-${timestamp}.png`;
         
-        // Show filename in status area immediately
-        this.showDownloadedFilename(expectedFilename, 'Downloads/ProUpscaler/');
+        // Show completion in canvas area instead of full-screen modal
+        this.showNotification('Large file processing complete! File saved to Downloads/ProUpscaler/', 'success');
         
-        // Check if this was a 10x upscale that got adjusted to 8x
-        const scaleFactor = document.getElementById('scale-factor')?.value || 10;
-        const isAdjustedScale = parseInt(scaleFactor) === 10;
+        // Use the existing results overlay to show completion details
+        const resultsOverlay = document.getElementById('results-overlay');
+        if (resultsOverlay) {
+            // Update the results overlay with completion info
+            const finalDimensionsLeft = document.getElementById('final-dimensions-left');
+            const finalSizeLeft = document.getElementById('final-size-left');
+            const actualTimeLeft = document.getElementById('actual-time-left');
+            const finalFormatLeft = document.getElementById('final-format-left');
+            
+            if (finalDimensionsLeft) finalDimensionsLeft.textContent = `${result.width} × ${result.height}`;
+            if (finalSizeLeft) finalSizeLeft.textContent = this.formatFileSize(result.size || 0);
+            if (actualTimeLeft) actualTimeLeft.textContent = `${processingTime}s`;
+            if (finalFormatLeft) finalFormatLeft.textContent = (result.format || 'PNG').toUpperCase();
+            
+            resultsOverlay.classList.remove('hidden');
+        }
         
+        return; // Skip the full-screen modal
+        
+        // Disabled full-screen modal (kept for reference)
         const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
+        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden';
         modal.innerHTML = `
             <div class="bg-card border border-border rounded-lg max-w-md w-full p-6 space-y-4">
                 <div class="text-center">
@@ -1517,23 +2240,63 @@ class ProUpscalerApp {
      */
     updateFilenamePreview(format = 'png') {
         const previewEl = document.getElementById('preview-filename');
-        if (!previewEl) return;
+        const previewTextEl = document.getElementById('preview-filename-text');
         
         const customName = document.getElementById('custom-filename')?.value.trim();
         
+        let filename, title;
         if (customName && this.validateCustomFilename()) {
             // Show custom filename with extension
             const extension = this.getExtensionForFormat(format);
-            const filename = customName.endsWith(`.${extension}`) ? customName : `${customName}.${extension}`;
-            previewEl.textContent = filename;
-            previewEl.title = `Custom filename: ${filename}`;
+            filename = customName.endsWith(`.${extension}`) ? customName : `${customName}.${extension}`;
+            title = `Custom filename: ${filename}`;
         } else {
             // Show auto-generated preview
-            previewEl.textContent = 'Auto-generated';
-            previewEl.title = 'Filename will be automatically generated based on timestamp and session ID';
+            filename = 'Auto-generated';
+            title = 'Filename will be automatically generated based on timestamp and session ID';
+        }
+        
+        // Update both old and new elements
+        if (previewEl) {
+            previewEl.textContent = filename;
+            previewEl.title = title;
+        }
+        if (previewTextEl) {
+            previewTextEl.textContent = filename;
+            previewTextEl.title = title;
         }
     }
     
+    /**
+     * Reset canvas overlays to default state
+     */
+    resetCanvasOverlays() {
+        const noImageText = document.getElementById('no-image-text');
+        const imageInfoText = document.getElementById('image-info-text');
+        
+        if (noImageText && imageInfoText) {
+            noImageText.classList.remove('hidden');
+            imageInfoText.classList.add('hidden');
+        }
+        
+        // Reset overlay text values
+        const dimensionsText = document.getElementById('image-dimensions-text');
+        const sizeText = document.getElementById('image-size-text');
+        const formatText = document.getElementById('image-format-text');
+        const outputDimensionsText = document.getElementById('output-dimensions-text');
+        const estimatedSizeText = document.getElementById('estimated-size-text');
+        const estimatedTimeText = document.getElementById('estimated-time-text');
+        const previewFilenameText = document.getElementById('preview-filename-text');
+        
+        if (dimensionsText) dimensionsText.textContent = '-';
+        if (sizeText) sizeText.textContent = '-';
+        if (formatText) formatText.textContent = '-';
+        if (outputDimensionsText) outputDimensionsText.textContent = '-';
+        if (estimatedSizeText) estimatedSizeText.textContent = '-';
+        if (estimatedTimeText) estimatedTimeText.textContent = '-';
+        if (previewFilenameText) previewFilenameText.textContent = 'Auto-generated';
+    }
+
     /**
      * Get file extension for format
      */
@@ -1543,6 +2306,81 @@ class ProUpscalerApp {
             case 'webp': return 'webp';
             case 'png':
             default: return 'png';
+        }
+    }
+
+    async checkProEngineAvailability() {
+        const status = await this.proEngineDownloader.checkProEngineStatus();
+        this.proEngineAvailable = status.installed && status.aiModelsLoaded;
+        if (status.eligible && !status.installed) {
+            this.showProEngineInstallPrompt();
+        }
+        this.updateProEngineUI(status);
+    }
+
+    updateProEngineUI(status) {
+        const indicator = document.getElementById('pro-engine-status');
+        if (!indicator) return;
+        if (status.installed && status.aiModelsLoaded) {
+            indicator.textContent = '⚡ Pro Engine Active';
+            indicator.className = 'status-indicator pro-engine-active';
+        } else if (status.eligible) {
+            indicator.textContent = '📥 Pro Engine Available';
+            indicator.className = 'status-indicator pro-engine-available';
+        } else {
+            indicator.textContent = '🔒 Pro Engine (Not Available)';
+            indicator.className = 'status-indicator pro-engine-locked';
+        }
+    }
+    
+
+    
+    downloadProcessedImage() {
+        // Just call the working download method
+        this.downloadResult();
+    }
+    
+    updateDownloadButtonState() {
+        const downloadBtn = document.getElementById('header-download-btn');
+        
+        if (!downloadBtn) return;
+        
+        const hasImage = this.currentImage !== null;
+        const hasProcessed = this.processedResult !== null;
+        
+        // Enable download button as soon as we have ANY image
+        if (hasImage || hasProcessed) {
+            downloadBtn.disabled = false;
+            downloadBtn.style.opacity = '1';
+            downloadBtn.style.cursor = 'pointer';
+            downloadBtn.title = hasProcessed ? 'Download Upscaled Image' : 'Download Image (will upscale automatically)';
+        } else {
+            downloadBtn.disabled = true;
+            downloadBtn.style.opacity = '0.5';
+            downloadBtn.style.cursor = 'not-allowed';
+            downloadBtn.title = 'Upload an image first';
+        }
+    }
+
+    showProEngineInstallPrompt() {
+        const promptHtml = this.proEngineDownloader.showDownloadPrompt();
+        if (this.showModal) {
+            this.showModal('Pro Engine Installation', promptHtml);
+        } else {
+            console.log('Pro Engine prompt:', promptHtml);
+        }
+        document.getElementById('download-pro-engine')?.addEventListener('click', () => {
+            this.handleProEngineDownload();
+        });
+    }
+
+    async handleProEngineDownload() {
+        try {
+            this.showNotification('Starting Pro Engine download...', 'info');
+            await this.proEngineDownloader.downloadProEngine((progress) => this.updateDownloadProgress?.(progress));
+            this.showNotification('Pro Engine downloaded! Please run the installer.', 'success');
+        } catch (error) {
+            this.showNotification(`Download failed: ${error.message}`, 'error');
         }
     }
 }
@@ -1557,3 +2395,5 @@ window.addEventListener('beforeunload', () => {
         window.app.cleanup();
     }
 });
+
+
