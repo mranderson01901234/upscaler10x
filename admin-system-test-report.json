@@ -1,0 +1,149 @@
+{
+  "timestamp": "2025-09-24T19:53:39.925Z",
+  "summary": {
+    "total_tests": 18,
+    "passed": 18,
+    "failed": 0,
+    "success_rate": "100.0"
+  },
+  "results": [
+    {
+      "timestamp": "2025-09-24T19:53:39.703Z",
+      "type": "info",
+      "message": "🚀 Starting Admin System Integration Tests"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.710Z",
+      "type": "info",
+      "message": "📊 Testing Database Schema"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.710Z",
+      "type": "success",
+      "message": "✅ Admin Setup SQL File: Admin database schema file exists"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.710Z",
+      "type": "success",
+      "message": "✅ Admin Auth Middleware: Admin authentication middleware exists"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.711Z",
+      "type": "success",
+      "message": "✅ Admin Routes: Admin routes file exists"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.711Z",
+      "type": "info",
+      "message": "🔐 Testing Admin Authentication Middleware"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.804Z",
+      "type": "success",
+      "message": "✅ Admin middleware instantiated successfully"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.804Z",
+      "type": "success",
+      "message": "✅ Method authenticateAdmin exists"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.805Z",
+      "type": "success",
+      "message": "✅ Method checkPermission exists"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.805Z",
+      "type": "success",
+      "message": "✅ Method getUserPermissions exists"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.805Z",
+      "type": "success",
+      "message": "✅ Method logAdminAction exists"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.805Z",
+      "type": "success",
+      "message": "✅ Method getSystemHealth exists"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.805Z",
+      "type": "success",
+      "message": "✅ Method getBusinessMetrics exists"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.805Z",
+      "type": "success",
+      "message": "✅ Method searchUsers exists"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.805Z",
+      "type": "info",
+      "message": "🛣️ Testing Admin Routes"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.888Z",
+      "type": "success",
+      "message": "✅ Admin routes instantiated successfully"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.889Z",
+      "type": "success",
+      "message": "✅ Admin router created successfully"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.889Z",
+      "type": "info",
+      "message": "💚 Testing System Health Monitoring"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.924Z",
+      "type": "success",
+      "message": "✅ Main server healthy: healthy"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.925Z",
+      "type": "info",
+      "message": "👥 Testing User Management Components"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.925Z",
+      "type": "success",
+      "message": "✅ AdminDashboard Component exists and exports component"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.925Z",
+      "type": "success",
+      "message": "✅ UserManagement Component exists and exports component"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.925Z",
+      "type": "info",
+      "message": "📈 Testing Analytics Components"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.925Z",
+      "type": "success",
+      "message": "✅ Analytics view business_metrics defined in schema"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.925Z",
+      "type": "success",
+      "message": "✅ Analytics view subscription_analytics defined in schema"
+    },
+    {
+      "timestamp": "2025-09-24T19:53:39.925Z",
+      "type": "info",
+      "message": "📋 Generating Test Report"
+    }
+  ],
+  "admin_system_status": "READY",
+  "next_steps": [
+    "1. Run supabase-admin-setup.sql in your Supabase SQL editor",
+    "2. Create your first admin user by updating user_profiles table",
+    "3. Test admin login and permissions",
+    "4. Access admin dashboard at /admin",
+    "5. Configure system monitoring and alerts"
+  ]
+}

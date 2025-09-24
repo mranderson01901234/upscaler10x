@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Upscaler</title>
+    <link rel="stylesheet" href="style-enterprise.css">
+    <link rel="stylesheet" href="premium-header.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-background text-foreground antialiased">
+    <div class="app-layout">
+
+        <!-- Floating Header Pill -->
+        <header class="header-pill">
+            <div class="header-content">
+                <div class="logo-section" style="display: flex; align-items: center; gap: 0.75rem;">
+                    <h1>Pro Upscaler</h1>
+                    <button id="header-upload-btn" class="header-button" title="Upload Image" style="padding: 0.4em 0.9em; font-size: 1em; display: flex; align-items: center; gap: 0.4em;">
+                        <svg style="height: 1.2em; width: 1.2em;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span style="font-weight: 500;">Upload</span>
+                    </button>
+                    <input type="file" id="header-file-input" accept="image/*" class="hidden">
+                    
+                    <!-- Download Button -->
+                    <div class="download-button-container" style="position: relative;">
+                        <button id="header-download-btn" class="header-button" title="Download Upscaled Image" style="padding: 0.4em 0.9em; font-size: 1em; display: flex; align-items: center; gap: 0.4em; opacity: 0.5; cursor: not-allowed;" disabled>
+                            <svg style="height: 1.2em; width: 1.2em;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m0 0l-3-3m3 3l3-3M5 21h14"/>
+                            </svg>
+                            <span style="font-weight: 500;">Download</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="status-section">
+                    <!-- User Authentication Section -->
+                    <div class="user-section">
+                        <!-- When signed out -->
+                        <div id="signed-out-state">
+                            <button id="signin-button" class="header-button">Sign In</button>
+                            <button id="signup-button" class="header-button secondary">Sign Up</button>
+                        </div>
+                        
+                        <!-- When signed in -->
+                        <div id="signed-in-state" class="hidden">
+                            <div class="user-info">
+                                <span id="user-email"></span>
+                                <span id="user-tier" class="tier-badge"></span>
+                            </div>
+                            <div class="user-menu">
+                                <button id="user-menu-button" class="user-menu-trigger">⚙️</button>
+                                <div id="user-dropdown" class="user-dropdown hidden">
+                                    <a href="#" id="view-usage">Usage</a>
+                                    <a href="#" id="manage-subscription">Subscription</a>
+                                    <a href="#" id="signout-button">Sign Out</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="pro-engine-status" class="status-indicator">🔧 Checking Pro Engine...</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area with Two Sidebars -->
+        <main class="main-content-area">
+            <div class="enterprise-layout">
+
+                <!-- Left Sidebar - Processing Controls -->
+                <aside class="processing-status-panel" id="processing-panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title">Processing Controls</h2>
+                    </div>
+                    <div class="panel-content">
+                        <!-- File Status -->
+                        <div class="status-section">
+                            <div class="section-title">Current File</div>
+                            <div class="file-status">
+                                <div class="file-info">
+                                    <div class="file-name" id="file-name-display">No file selected</div>
+                                    <div class="file-location" id="file-location-display">Ready for upload</div>
+                                </div>
+                                <div class="file-status-indicator" id="file-status-indicator">
+                                    <div class="status-dot" id="status-dot"></div>
+                                    <div class="status-text" id="status-text">Ready</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Processing Options -->
+                        <div class="status-section">
+                            <div class="section-title">Processing Options</div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Upscale Factor</label>
+                                <select class="select" id="scale-select">
+                                    <option value="2">2x - Standard</option>
+                                    <option value="4" selected>4x - High Quality</option>
+                                    <option value="8">8x - Ultra High</option>
+                                    <option value="16">16x - Maximum</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Processing Mode</label>
+                                <select class="select" id="mode-select">
+                                    <option value="standard">Standard Processing</option>
+                                    <option value="ai-enhanced">AI Enhanced</option>
+                                    <option value="pro-engine">Pro Engine</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Output Format</label>
+                                <select class="select" id="format-select">
+                                    <option value="png">PNG - Lossless</option>
+                                    <option value="jpeg">JPEG - Compressed</option>
+                                    <option value="webp">WebP - Modern</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Settings -->
+                        <div class="status-section">
+                            <div class="section-title">Advanced Settings</div>
+                            
+                            <div class="toggle-container">
+                                <label class="form-label">AI Enhancement</label>
+                                <label class="toggle-switch" onclick="toggleSetting('ai-enhancement')">
+                                    <input type="checkbox" class="setting-toggle" id="ai-enhancement-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="toggle-container">
+                                <label class="form-label">Artifact Removal</label>
+                                <label class="toggle-switch" onclick="toggleSetting('artifact-removal')">
+                                    <input type="checkbox" class="setting-toggle" id="artifact-removal-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="toggle-container">
+                                <label class="form-label">Color Correction</label>
+                                <label class="toggle-switch" onclick="toggleSetting('color-correction')">
+                                    <input type="checkbox" class="setting-toggle" id="color-correction-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="toggle-container">
+                                <label class="form-label">HDR Enhancement</label>
+                                <label class="toggle-switch" onclick="toggleSetting('hdr-enhancement')">
+                                    <input type="checkbox" class="setting-toggle" id="hdr-enhancement-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Action Button -->
+                        <div class="panel-footer">
+                            <button class="process-button" id="process-button" disabled>
+                                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                                Process Image
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Main Content Area - Primary Canvas -->
+                <div class="image-comparison-area">
+                    <!-- Original Image Panel -->
+                    <div class="image-panel original-panel">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Original Image</h3>
+                            <div class="panel-info" id="original-info">No image loaded</div>
+                        </div>
+                        <div class="image-container">
+                            <div class="upload-area">
+                                <div class="upload-content">
+                                    <div class="upload-icon">
+                                        <svg class="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                        </svg>
+                                    </div>
+                                    <div class="upload-text">
+                                        <h3>Drop your image here</h3>
+                                        <p>or click to browse files</p>
+                                        <button class="upload-button" onclick="document.getElementById('file-input').click()">
+                                            Choose Image
+                                        </button>
+                                    </div>
+                                    <div class="upload-info">
+                                        Supports PNG, JPEG, WebP, TIFF up to 1.5GB
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="file" id="file-input" accept="image/*" class="hidden">
+                        </div>
+                    </div>
+
+                    <!-- Enhanced Image Panel -->
+                    <div class="image-panel enhanced-panel">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Enhanced Result</h3>
+                            <div class="panel-info" id="enhanced-info">Processing output will appear here</div>
+                        </div>
+                        <div class="image-container">
+                            <div class="placeholder-content">
+                                <div class="placeholder-icon">
+                                    <svg class="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                </div>
+                                <div class="placeholder-text">
+                                    <h3>Enhanced Image</h3>
+                                    <p>Your upscaled image will appear here</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Sidebar - Results and Sharing -->
+                <aside class="share-options-panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title">Results & Sharing</h2>
+                    </div>
+                    <div class="panel-content">
+                        
+                        <!-- Processing Metrics -->
+                        <div class="status-section">
+                            <div class="section-title">Processing Metrics</div>
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <div class="metric-label">Scale</div>
+                                    <div class="metric-value" id="metrics-scale">-</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Time</div>
+                                    <div class="metric-value" id="metrics-time">-</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Quality</div>
+                                    <div class="metric-value" id="metrics-quality">-</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Size</div>
+                                    <div class="metric-value" id="metrics-size">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Download Options -->
+                        <div class="status-section">
+                            <div class="section-title">Download Options</div>
+                            <div class="option-group">
+                                <div class="option-item">
+                                    <input type="radio" name="download-format" value="png" id="download-png" checked>
+                                    <label for="download-png">PNG (Lossless)</label>
+                                </div>
+                                <div class="option-item">
+                                    <input type="radio" name="download-format" value="jpeg" id="download-jpeg">
+                                    <label for="download-jpeg">JPEG (Compressed)</label>
+                                </div>
+                                <div class="option-item">
+                                    <input type="radio" name="download-format" value="webp" id="download-webp">
+                                    <label for="download-webp">WebP (Modern)</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Share Options -->
+                        <div class="status-section">
+                            <div class="section-title">Share Options</div>
+                            <div class="share-actions">
+                                <button class="share-button" id="share-twitter">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/>
+                                    </svg>
+                                    Share on Twitter
+                                </button>
+                                <button class="share-button" id="share-facebook">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/>
+                                    </svg>
+                                    Share on Facebook
+                                </button>
+                                <button class="share-button primary-share" id="download-result">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    Download Result
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </aside>
+
+            </div>
+        </main>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/supabase-auth-service.js"></script>
+    <script src="js/file-handler.js"></script>
+    <script src="js/upscaler.js"></script>
+    <script src="js/pro-engine-interface.js"></script>
+    <script src="js/pro-engine-downloader.js"></script>
+    <script src="js/webgpu-integration-fix.js"></script>
+    <script src="js/stripe-modal.js"></script>
+    <script src="js/payment-manager.js"></script>
+    <script src="js/premium-header.js"></script>
+    <script src="theme-switcher.js"></script>
+    <script src="quick-color-switcher.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

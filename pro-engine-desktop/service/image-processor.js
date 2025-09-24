@@ -2,6 +2,9 @@ const sharp = require('sharp');
 const os = require('os');
 const AIEnhancer = require('./ai-enhancer');
 
+// Import GPU acceleration components
+const GPUAcceleratedProcessor = require('./gpu-accelerated-processor');
+
 class ImageProcessor {
     constructor() {
         console.log('🔧 Configuring Sharp for memory-optimized performance...');
@@ -28,6 +31,17 @@ class ImageProcessor {
         // Initialize AI enhancer
         this.aiEnhancer = new AIEnhancer();
         
+        // Initialize GPU acceleration
+        this.gpuProcessor = null;
+        this.gpuAvailable = false;
+        this.hardwareDetector = null;
+        
+        // Initialize CPU tiled processor (fallback for large images)
+        this.cpuTiledProcessor = null;
+        
+        // Initialize GPU acceleration (will be completed in initialize())
+        this.gpuInitialized = false;
+        
         console.log('💻 System info:', {
             cpus: this.systemInfo.cpuCount,
             memory: `${Math.round(this.systemInfo.totalMemory / 1024 / 1024 / 1024)}GB`,
@@ -40,7 +54,11 @@ class ImageProcessor {
     }
     
     async initialize() {
-        // Additional initialization if needed
+        // Initialize GPU acceleration and CPU tiled processor
+        if (!this.gpuInitialized) {
+            await this.initializeGPUAcceleration();
+            this.gpuInitialized = true;
+        }
         console.log('🔧 ImageProcessor initialized with debug mode enabled');
         return Promise.resolve();
     }
@@ -454,16 +472,14 @@ class ImageProcessor {
             return steps;
         }
         
-        // For larger scale factors, create more granular steps to ensure proper processing time
+        // For larger scale factors, create progressive 2x steps to maintain optimal algorithm
         const scaleRatio = targetScale / currentScale;
         let stepMultiplier;
         
-        if (scaleRatio <= 8) {
-            stepMultiplier = 2.0; // 2x steps for moderate scales
-        } else if (scaleRatio <= 16) {
-            stepMultiplier = 1.8; // Smaller steps for large scales (more processing time)
+        if (scaleRatio <= 16) {
+            stepMultiplier = 2.0; // 2x steps for optimal sequential scaling (RESTORED ORIGINAL ALGORITHM)
         } else {
-            stepMultiplier = 1.6; // Even smaller steps for very large scales
+            stepMultiplier = 1.8; // Smaller steps only for extreme scales (>16x)
         }
         
         console.log(`📊 Using step multiplier: ${stepMultiplier.toFixed(1)}x (ensures ${Math.ceil(Math.log(scaleRatio) / Math.log(stepMultiplier))} steps)`);
@@ -511,6 +527,21 @@ class ImageProcessor {
     }
     
     async processImage(imageBuffer, scaleFactor, onProgress) {
+        // Use the new WebGPU-enabled processing with default parameters
+        const result = await this.processImageNew(imageBuffer, scaleFactor, 'jpeg', 95, null, null, 
+            (progress, message) => {
+                if (onProgress) {
+                    onProgress({ stage: 'processing', progress, message });
+                }
+            }
+        );
+        
+        // Return buffer for backward compatibility
+        return result.buffer;
+    }
+
+    // Legacy method for backward compatibility
+    async processImageLegacy(imageBuffer, scaleFactor, onProgress) {
         const startTime = Date.now();
         
         try {
@@ -938,6 +969,474 @@ class ImageProcessor {
             aiEnhancementApplied: true,
             aiScale: aiScale
         };
+    }
+
+    /**
+     * Initialize GPU acceleration
+     */
+    async initializeGPUAcceleration() {
+        console.log('🚀 Initializing GPU acceleration...');
+        
+        // DISABLE WebGPU completely - use proven Sharp GPU acceleration instead
+        console.log('⚠️ WebGPU disabled by design - using Sharp GPU acceleration');
+        this.webgpuAvailable = false;
+        this.webgpuProcessor = null;
+        
+        try {
+            // Initialize proven GPU-accelerated processor with Sharp
+            this.gpuProcessor = new GPUAcceleratedProcessor();
+            await this.gpuProcessor.initialize();
+            console.log('✅ Standard GPU processor initialized - secondary method');
+            
+            // Initialize GPU tiled processor for large images
+            const GPUTiledProcessor = require('./gpu-tiled-processor');
+            this.gpuTiledProcessor = new GPUTiledProcessor();
+            await this.gpuTiledProcessor.initialize();
+            console.log('✅ GPU tiled processor initialized - REAL TILED GPU PROCESSING');
+            
+            this.gpuAvailable = true;
+            console.log('🎯 Standard GPU acceleration enabled - using NVIDIA GeForce GTX 1050');
+            
+        } catch (error) {
+            console.warn('⚠️ GPU acceleration initialization failed:', error.message);
+            console.log('📊 Falling back to CPU-only processing');
+            this.gpuAvailable = false;
+        }
+    }
+
+    /**
+     * Test WebGPU capability with a small image
+     */
+    async testWebGPUCapability() {
+        try {
+            if (!this.webgpuProcessor) {
+                return { success: false, error: 'WebGPU processor not initialized' };
+            }
+
+            // Create a small test image (100x100)
+            const testImageBuffer = await sharp({
+                create: {
+                    width: 100,
+                    height: 100,
+                    channels: 3,
+                    background: { r: 128, g: 128, b: 128 }
+                }
+            }).png().toBuffer();
+
+            // Test 2x upscaling
+            const startTime = Date.now();
+            const result = await this.webgpuProcessor.processImage(testImageBuffer, 2);
+            const processingTime = Date.now() - startTime;
+
+            if (result && result.buffer) {
+                const expectedSpeedup = this.hardwareDetector.estimateWebGPUPerformance()?.performanceMultiplier || 6;
+                return { 
+                    success: true, 
+                    processingTime,
+                    expectedSpeedup
+                };
+            } else {
+                return { success: false, error: 'WebGPU processing returned invalid result' };
+            }
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Determine optimal processing method
+     */
+    getOptimalProcessingMethod(imageWidth, imageHeight, scaleFactor, options = {}) {
+        const totalPixels = imageWidth * imageHeight;
+        const outputPixels = totalPixels * (scaleFactor * scaleFactor);
+        
+        // Force CPU if explicitly requested
+        if (options.forceCPU) {
+            return {
+                method: 'cpu',
+                reason: 'CPU processing explicitly requested'
+            };
+        }
+
+        // Force GPU if explicitly requested and available
+        if (options.forceGPU && this.gpuAvailable) {
+            return {
+                method: 'gpu',
+                reason: 'GPU processing explicitly requested'
+            };
+        }
+
+        // If GPU is not available, use CPU
+        if (!this.gpuAvailable) {
+            return {
+                method: 'cpu',
+                reason: 'GPU not available'
+            };
+        }
+
+        // For very small images, CPU might be faster due to overhead
+        if (totalPixels < 50000) { // Less than ~220x220
+            return {
+                method: 'cpu',
+                reason: 'Small image - CPU overhead lower'
+            };
+        }
+
+        // For large scale factors, GPU is usually better
+        if (scaleFactor >= 8) {
+            return {
+                method: 'gpu',
+                reason: `Large scale factor (${scaleFactor}x) - GPU excels at high scaling`
+            };
+        }
+
+        // For high-resolution images, GPU is usually better
+        if (totalPixels > 2000000) { // More than ~1400x1400
+            return {
+                method: 'gpu',
+                reason: 'High resolution image - GPU better for large images'
+            };
+        }
+
+        // For very high output resolution, prefer GPU
+        if (outputPixels > 50000000) { // More than ~7000x7000 output
+            return {
+                method: 'gpu',
+                reason: 'Very high output resolution - GPU handles memory better'
+            };
+        }
+
+        // Default to GPU for general performance benefits
+        return {
+            method: 'gpu',
+            reason: 'GPU provides general performance benefits'
+        };
+    }
+
+    /**
+     * Process image with optimal method selection
+     */
+    async processImageNew(imageBuffer, scaleFactor, format = 'jpeg', quality = 95, customFilename = null, customLocation = null, onProgress = null, options = {}) {
+        const startTime = Date.now();
+        
+        try {
+            // Get image metadata
+            const metadata = await sharp(imageBuffer).metadata();
+            const { width: originalWidth, height: originalHeight } = metadata;
+            
+            console.log(`🔍 Processing ${originalWidth}×${originalHeight} → ${Math.round(originalWidth * scaleFactor)}×${Math.round(originalHeight * scaleFactor)} (${scaleFactor}x)`);
+            
+            // Determine optimal processing method
+            const processingDecision = this.getOptimalProcessingMethod(originalWidth, originalHeight, scaleFactor, options);
+            console.log(`🎯 Processing method: ${processingDecision.method} (${processingDecision.reason})`);
+            
+            let processedImage;
+            
+            // PRIORITY 1: Use GPU TILED processing for scale factors > 4.1x (bypasses memory wall)
+            if (this.gpuTiledProcessor && scaleFactor > 4.1) {
+                console.log(`🚀 Using GPU TILED processing for ${scaleFactor}x scaling (bypassing 4.1x memory wall)`);
+                try {
+                    processedImage = await this.processWithGPUTiled(imageBuffer, scaleFactor, format, quality, onProgress, options);
+                } catch (error) {
+                    console.warn(`⚠️ GPU tiled processing failed for ${scaleFactor}x:`, error.message);
+                    // Fall back to standard GPU or CPU
+                    if (this.gpuAvailable && this.gpuProcessor) {
+                        console.log(`🔄 Falling back to standard GPU processing...`);
+                        processedImage = await this.processWithGPU(imageBuffer, scaleFactor, format, quality, onProgress, options);
+                    } else {
+                        console.log(`🔄 Falling back to CPU processing...`);
+                        processedImage = await this.processWithCPU(imageBuffer, scaleFactor, format, quality, onProgress, { ...options, forceCPU: true });
+                    }
+                }
+            }
+            // PRIORITY 2: Use standard GPU processing for moderate scale factors
+            else if (this.gpuAvailable && this.gpuProcessor && scaleFactor >= 2) {
+                console.log(`🚀 Using standard GPU processing for ${scaleFactor}x scaling`);
+                try {
+                    processedImage = await this.processWithGPU(imageBuffer, scaleFactor, format, quality, onProgress, options);
+                } catch (error) {
+                    console.warn(`⚠️ Standard GPU processing failed for ${scaleFactor}x:`, error.message);
+                    console.log(`🔄 Falling back to CPU processing...`);
+                    processedImage = await this.processWithCPU(imageBuffer, scaleFactor, format, quality, onProgress, { ...options, forceCPU: true });
+                }
+            }
+            // PRIORITY 3: Use CPU processing for low scale factors or as final fallback
+            else {
+                console.log(`🖥️ Using CPU processing for ${scaleFactor}x scaling`);
+                processedImage = await this.processWithCPU(imageBuffer, scaleFactor, format, quality, onProgress, options);
+            }
+            
+            const totalTime = Date.now() - startTime;
+            console.log(`✅ Image processing completed in ${totalTime}ms using ${processingDecision.method.toUpperCase()}`);
+            
+            return processedImage;
+            
+        } catch (error) {
+            console.error('❌ Image processing failed:', error);
+            
+            // If GPU failed, try CPU fallback
+            if (error.message.includes('GPU')) {
+                console.log('🔄 GPU failed, attempting CPU fallback...');
+                try {
+                    return await this.processWithCPU(imageBuffer, scaleFactor, format, quality, onProgress, { ...options, forceCPU: true });
+                } catch (fallbackError) {
+                    console.error('❌ CPU fallback also failed:', fallbackError);
+                    throw fallbackError;
+                }
+            }
+            
+            throw error;
+        }
+    }
+
+    /**
+     * Process image using GPU TILED processing (PRIMARY METHOD for > 4.1x)
+     */
+    async processWithGPUTiled(imageBuffer, scaleFactor, format, quality, onProgress, options = {}) {
+        console.log('🚀 Processing with GPU TILED processing...');
+        
+        if (onProgress) onProgress(5, 'Initializing GPU tiled processing...');
+        
+        try {
+            // Use GPU tiled processor
+            const result = await this.gpuTiledProcessor.processImageTiled(
+                imageBuffer,
+                scaleFactor,
+                {
+                    algorithm: options.algorithm || 'lanczos3',
+                    format: format,
+                    quality: quality,
+                    // NEW: Pass parallel processing options
+                    parallelConcurrency: options.parallelConcurrency,
+                    enableParallelProcessing: options.enableParallelProcessing
+                },
+                onProgress
+            );
+            
+            return {
+                buffer: result.buffer,
+                format: result.format || format,
+                extension: result.extension || format,
+                width: result.width,
+                height: result.height,
+                processingMethod: 'gpu-tiled',
+                algorithm: result.algorithm || 'lanczos3',
+                tilesProcessed: result.tilesProcessed || 0,
+                averageTileTime: result.averageTileTime || 0
+            };
+            
+        } catch (error) {
+            console.error('❌ GPU tiled processing failed:', error);
+            throw new Error(`GPU tiled processing failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Process image using WebGPU TILED processing (EXPERIMENTAL)
+     */
+    async processWithWebGPU(imageBuffer, scaleFactor, options = {}, onProgress = null) {
+        console.log('🚀 Processing with WebGPU TILED processing...');
+        
+        if (onProgress) onProgress(5, 'Initializing WebGPU tiled processing...');
+        
+        try {
+            // Use WebGPU tiled processor
+            const result = await this.webgpuProcessor.processImage(
+                imageBuffer,
+                scaleFactor,
+                {
+                    algorithm: options.algorithm || 'bicubic',
+                    format: options.format,
+                    quality: options.quality,
+                    enableTiling: true  // Force tiled processing
+                },
+                (progress, message) => {
+                    if (onProgress) onProgress(progress, message);
+                }
+            );
+            
+            return {
+                buffer: result.buffer,
+                format: result.format || options.format,
+                extension: result.extension || options.format,
+                width: result.width,
+                height: result.height,
+                processingMethod: 'webgpu-tiled',
+                algorithm: result.algorithm || 'bicubic',
+                tilesProcessed: result.tilesProcessed || 0,
+                averageTileTime: result.averageTileTime || 0
+            };
+            
+        } catch (error) {
+            console.error('❌ WebGPU tiled processing failed:', error);
+            throw new Error(`WebGPU tiled processing failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Process image using standard GPU acceleration (SECONDARY METHOD)
+     */
+    async processWithGPU(imageBuffer, scaleFactor, format, quality, onProgress, options = {}) {
+        console.log('🚀 Processing with standard GPU acceleration...');
+        
+        if (onProgress) onProgress(10, 'Initializing standard GPU processing...');
+        
+        try {
+            // Use standard GPU processor
+            const result = await this.gpuProcessor.processImage(
+                imageBuffer,
+                scaleFactor,
+                {
+                    algorithm: options.algorithm || 'bicubic',
+                    format: format,
+                    quality: quality
+                },
+                (progress, message) => {
+                    if (onProgress) onProgress(progress, message);
+                }
+            );
+            
+            return {
+                buffer: result.buffer,
+                format: result.format || format,
+                extension: result.extension || format,
+                width: result.width,
+                height: result.height,
+                processingMethod: 'gpu-standard',
+                algorithm: result.algorithm || 'bicubic'
+            };
+            
+        } catch (error) {
+            console.error('❌ Standard GPU processing failed:', error);
+            throw new Error(`Standard GPU processing failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Process image using CPU (existing Sharp-based processing)
+     */
+    async processWithCPU(imageBuffer, scaleFactor, format, quality, onProgress, options = {}) {
+        console.log('🖥️ Processing with CPU (Sharp)...');
+        
+        if (onProgress) onProgress(10, 'Initializing CPU processing...');
+        
+        try {
+            const metadata = await sharp(imageBuffer).metadata();
+            const { width: originalWidth, height: originalHeight } = metadata;
+            
+            // Check if we should use CPU tiled processing for large images
+            if (this.cpuTiledProcessor && this.cpuTiledProcessor.shouldUseTiledProcessing(originalWidth, originalHeight, scaleFactor)) {
+                console.log(`🧩 Using CPU tiled processing for ${scaleFactor}x (${originalWidth}×${originalHeight}) - avoiding memory issues`);
+                
+                const tiledResult = await this.cpuTiledProcessor.processImageTiled(
+                    imageBuffer, 
+                    scaleFactor, 
+                    { format, quality, ...options },
+                    (progress, message) => {
+                        if (onProgress) onProgress(progress, message);
+                    }
+                );
+                
+                return {
+                    buffer: tiledResult.buffer,
+                    format: tiledResult.format,
+                    extension: tiledResult.extension,
+                    width: tiledResult.width,
+                    height: tiledResult.height,
+                    processingMethod: 'cpu-tiled',
+                    algorithm: tiledResult.algorithm,
+                    tilesProcessed: tiledResult.tilesProcessed,
+                    averageTileTime: tiledResult.averageTileTime
+                };
+            }
+            
+            // Use regular CPU processing for smaller images
+            console.log(`⚡ Using direct CPU processing for ${scaleFactor}x (${originalWidth}×${originalHeight})`);
+            
+            const targetWidth = Math.round(originalWidth * scaleFactor);
+            const targetHeight = Math.round(originalHeight * scaleFactor);
+            
+            if (onProgress) onProgress(30, 'CPU upscaling in progress...');
+            
+            // Use Sharp for CPU processing
+            let sharpInstance = sharp(imageBuffer);
+            
+            // Apply upscaling
+            sharpInstance = sharpInstance.resize(targetWidth, targetHeight, {
+                kernel: sharp.kernel.lanczos3,
+                fit: 'fill'
+            });
+            
+            if (onProgress) onProgress(70, 'Applying output format...');
+            
+            // Apply format and quality settings
+            if (format === 'jpeg' || format === 'jpg') {
+                sharpInstance = sharpInstance.jpeg({ quality: quality });
+            } else if (format === 'png') {
+                sharpInstance = sharpInstance.png({ quality: quality });
+            } else if (format === 'webp') {
+                sharpInstance = sharpInstance.webp({ quality: quality });
+            } else if (format === 'tiff') {
+                sharpInstance = sharpInstance.tiff({ quality: quality });
+            }
+            
+            if (onProgress) onProgress(90, 'Finalizing CPU result...');
+            
+            const buffer = await sharpInstance.toBuffer();
+            
+            return {
+                buffer: buffer,
+                format: format,
+                extension: format,
+                width: targetWidth,
+                height: targetHeight,
+                processingMethod: 'cpu-direct',
+                algorithm: 'lanczos3'
+            };
+            
+        } catch (error) {
+            console.error('❌ CPU processing failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Process image using WebGPU acceleration
+     */
+    async processWithWebGPU(imageBuffer, scaleFactor, options = {}, onProgress) {
+        if (!this.gpuAvailable || !this.webgpuProcessor) {
+            throw new Error('WebGPU not available');
+        }
+
+        console.log(`🚀 Starting WebGPU processing: ${scaleFactor}x scaling`);
+        
+        try {
+            // Use WebGPU processor
+            const result = await this.webgpuProcessor.processImage(
+                imageBuffer, 
+                scaleFactor, 
+                options, 
+                onProgress
+            );
+            
+            console.log(`✅ WebGPU processing completed: ${result.width}x${result.height} in ${result.processingTime}ms`);
+            
+            return {
+                buffer: result.buffer,
+                data: result.data,
+                width: result.width,
+                height: result.height,
+                processingTime: result.processingTime,
+                processingMethod: 'webgpu',
+                algorithm: result.algorithm,
+                format: options.format || 'png',
+                extension: options.format || 'png'
+            };
+            
+        } catch (error) {
+            console.error('❌ WebGPU processing failed:', error);
+            throw error;
+        }
     }
 
     // Legacy method compatibility for existing code

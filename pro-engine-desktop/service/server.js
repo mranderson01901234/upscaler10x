@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs').promises;
 const sharp = require('sharp');
+const net = require('net');
 const ImageProcessor = require('./image-processor');
 const HardwareDetector = require('./hardware-detector');
 const FileManager = require('./file-manager');
@@ -11,16 +12,36 @@ const { SubscriptionVerifier } = require('./subscription-verifier');
 class ProEngineDesktopService {
     constructor() {
         this.app = express();
-        this.port = process.env.PORT || 3007;
+        this.preferredPort = process.env.PORT || 3007;
+        this.port = null; // Will be determined dynamically
+        this.server = null;
         this.sessions = new Map();
+        this.processedImages = new Map(); // Store processed images for preview
         this.imageProcessor = new ImageProcessor();
         this.hardwareDetector = new HardwareDetector();
         this.fileManager = new FileManager();
         
         this.setupMiddleware();
         this.setupRoutes();
+        this.setupHealthMonitoring();
     }
-    
+
+    async findAvailablePort(startPort = this.preferredPort) {
+        return new Promise((resolve) => {
+            const server = net.createServer();
+            
+            server.listen(startPort, () => {
+                const port = server.address().port;
+                server.close(() => resolve(port));
+            });
+            
+            server.on('error', () => {
+                // Port in use, try next one
+                resolve(this.findAvailablePort(startPort + 1));
+            });
+        });
+    }
+
     setupMiddleware() {
         // CORS for browser communication
         this.app.use(cors({
@@ -106,18 +127,95 @@ class ProEngineDesktopService {
             console.log('🔍 Sharp configuration:', sharpInfo);
             res.json(sharpInfo);
         });
+
+        // WebGPU support endpoint - server-side WebGPU readiness
+        this.app.get('/api/webgpu-status', async (req, res) => {
+            try {
+                const webgpuSupport = this.hardwareDetector.getWebGPUSupport();
+                const performanceEstimate = this.hardwareDetector.estimateWebGPUPerformance();
+                
+                res.json({
+                    serverSupported: webgpuSupport?.serverSupported || false,
+                    supportLevel: webgpuSupport?.supportLevel || 'none',
+                    gpuInfo: webgpuSupport?.gpuInfo || null,
+                    requirements: webgpuSupport?.requirements || {},
+                    performanceEstimate: performanceEstimate,
+                    detectionTimestamp: webgpuSupport?.detectionTimestamp || Date.now(),
+                    message: webgpuSupport?.serverSupported 
+                        ? 'Server hardware supports WebGPU acceleration'
+                        : 'Server hardware may not support WebGPU acceleration'
+                });
+            } catch (error) {
+                console.error('WebGPU status error:', error);
+                res.status(500).json({ 
+                    error: 'Failed to get WebGPU status',
+                    serverSupported: false,
+                    supportLevel: 'none'
+                });
+            }
+        });
+
+        // WebGPU client capabilities endpoint - for client-side capability reporting
+        this.app.post('/api/webgpu-support', async (req, res) => {
+            try {
+                const { clientWebGPUInfo } = req.body;
+                
+                // Combine server-side and client-side information
+                const serverWebGPU = this.hardwareDetector.getWebGPUSupport();
+                const serverPerformance = this.hardwareDetector.estimateWebGPUPerformance();
+                
+                const combinedInfo = {
+                    server: {
+                        supported: serverWebGPU?.serverSupported || false,
+                        supportLevel: serverWebGPU?.supportLevel || 'none',
+                        gpuInfo: serverWebGPU?.gpuInfo || null,
+                        performanceEstimate: serverPerformance
+                    },
+                    client: clientWebGPUInfo || null,
+                    recommendation: this.getWebGPURecommendation(serverWebGPU, clientWebGPUInfo),
+                    timestamp: Date.now()
+                };
+
+                res.json(combinedInfo);
+            } catch (error) {
+                console.error('WebGPU client support error:', error);
+                res.status(500).json({ 
+                    error: 'Failed to process WebGPU client support info',
+                    recommendation: 'use-cpu'
+                });
+            }
+        });
         
         // Process large image endpoint
         this.app.post('/api/process-large', async (req, res) => {
             try {
-                const { sessionId, imageData, scaleFactor, format, quality, customFilename, customLocation } = req.body;
+                const requestStartTime = Date.now();
+                const { 
+                    sessionId, 
+                    imageData, 
+                    scaleFactor, 
+                    format, 
+                    quality, 
+                    customFilename, 
+                    customLocation,
+                    // NEW: Parallel processing parameters
+                    parallelConcurrency,
+                    enableParallelProcessing,
+                    algorithm
+                } = req.body;
+                
+                console.log(`🚀 [${sessionId}] Non-AI processing request received`);
                 
                 // Validate request
                 if (!sessionId || !imageData || !scaleFactor) {
+                    console.error(`❌ [${sessionId}] Missing required parameters`);
                     return res.status(400).json({ 
                         error: 'Missing required parameters: sessionId, imageData, scaleFactor' 
                     });
                 }
+                
+                console.log(`📊 [${sessionId}] Request params: scale=${scaleFactor}, format=${format}, quality=${quality}`);
+                console.log(`⏱️ [${sessionId}] Request processing time: ${Date.now() - requestStartTime}ms`);
                 
                 // Create processing session
                 const session = {
@@ -129,7 +227,12 @@ class ProEngineDesktopService {
                         format: format || 'png',
                         quality: parseInt(quality || 95),
                         customFilename: customFilename || null,
-                        customLocation: customLocation || null
+                        customLocation: customLocation || null,
+                        
+                        // NEW: Parallel processing configuration
+                        algorithm: algorithm || 'bicubic',
+                        parallelConcurrency: parseInt(parallelConcurrency || 6),
+                        enableParallelProcessing: enableParallelProcessing !== false
                     },
                     progress: 0,
                     message: 'Processing queued...'
@@ -196,6 +299,27 @@ class ProEngineDesktopService {
             // Cleanup on client disconnect
             req.on('close', () => {
                 clearInterval(progressInterval);
+            });
+        });
+
+        // Progress status endpoint (JSON only - for debug console)
+        this.app.get('/api/status/:sessionId', (req, res) => {
+            const { sessionId } = req.params;
+            const session = this.sessions.get(sessionId);
+            
+            if (!session) {
+                return res.status(404).json({ error: 'Session not found' });
+            }
+            
+            // Return JSON status
+            res.json({
+                sessionId: session.sessionId,
+                status: session.status,
+                progress: session.progress || 0,
+                message: session.message || 'Processing...',
+                processingTime: session.processingTime || 0,
+                error: session.error || null,
+                timestamp: Date.now()
             });
         });
         
@@ -301,6 +425,36 @@ class ProEngineDesktopService {
             }
         });
 
+        // Session result endpoint for getting processing results
+        this.app.get('/api/session-result/:sessionId', (req, res) => {
+            try {
+                const { sessionId } = req.params;
+                const session = this.sessions.get(sessionId);
+                
+                if (!session) {
+                    return res.status(404).json({ error: 'Session not found' });
+                }
+                
+                if (session.status !== 'complete') {
+                    return res.status(202).json({ 
+                        status: session.status,
+                        progress: session.progress,
+                        message: session.message
+                    });
+                }
+                
+                res.json({
+                    sessionId: sessionId,
+                    status: session.status,
+                    result: session.result
+                });
+                
+            } catch (error) {
+                console.error('Session result error:', error);
+                res.status(500).json({ error: 'Failed to get session result' });
+            }
+        });
+
         // Enhanced preview endpoint for AI-enhanced canvas display
         this.app.get('/api/enhanced-preview/:sessionId', async (req, res) => {
             try {
@@ -311,9 +465,25 @@ class ProEngineDesktopService {
                     return res.status(404).json({ error: 'Session not found' });
                 }
                 
-                // If no enhanced buffer, try to serve the final result file
+                // Check if we have processed image in memory first
+                const processedImage = this.processedImages.get(sessionId);
+                if (processedImage) {
+                    console.log(`📊 [${sessionId}] Serving processed image from memory (${processedImage.buffer.length} bytes)`);
+                    res.set({
+                        'Content-Type': `image/${processedImage.format}`,
+                        'Content-Length': processedImage.buffer.length,
+                        'Cache-Control': 'no-cache',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                    });
+                    res.send(processedImage.buffer);
+                    return;
+                }
+                
+                // If no enhanced buffer and no processed image, try to serve the final result file
                 if (!session.enhancedBuffer) {
-                    console.log(`🔍 No enhanced buffer for session ${sessionId}, checking for result file...`);
+                    console.log(`🔍 [${sessionId}] No enhanced buffer or processed image, checking for result file...`);
                     
                     if (session.status === 'complete' && session.result && session.result.outputPath) {
                         try {
@@ -466,6 +636,41 @@ class ProEngineDesktopService {
             });
         });
     }
+
+    setupHealthMonitoring() {
+        // Enhanced health endpoint
+        this.app.get('/health', async (req, res) => {
+            const health = {
+                status: 'healthy',
+                timestamp: Date.now(),
+                port: this.port,
+                services: {
+                    webgpu: this.imageProcessor.webgpuAvailable || false,
+                    gpu_acceleration: this.imageProcessor.gpuAvailable || false,
+                    sharp: !!sharp,
+                    file_manager: !!this.fileManager,
+                    hardware_detector: !!this.hardwareDetector
+                },
+                system: {
+                    memory: process.memoryUsage(),
+                    uptime: process.uptime(),
+                    platform: process.platform,
+                    node_version: process.version
+                }
+            };
+            
+            res.json(health);
+        });
+        
+        // Service discovery endpoint for web app
+        this.app.get('/api/service-info', (req, res) => {
+            res.json({
+                port: this.port,
+                capabilities: this.hardwareDetector.getCapabilities ? this.hardwareDetector.getCapabilities() : {},
+                status: 'available'
+            });
+        });
+    }
     
     sendProgressUpdate(res, session) {
         const data = JSON.stringify({
@@ -485,46 +690,81 @@ class ProEngineDesktopService {
         if (!session) return;
         
         try {
+            const stepTimes = { start: Date.now() };
+            console.log(`🚀 [${sessionId}] Starting image processing - Scale: ${config.scaleFactor}x`);
+            
             session.status = 'processing';
             session.message = 'Starting image processing...';
             
             // Convert data URL to buffer
+            console.log(`🔄 [${sessionId}] Converting data URL to buffer...`);
             const base64Data = imageData.split(',')[1];
             const imageBuffer = Buffer.from(base64Data, 'base64');
+            stepTimes.bufferConvert = Date.now();
+            console.log(`✅ [${sessionId}] Buffer conversion: ${stepTimes.bufferConvert - stepTimes.start}ms`);
             
-            // Process image using the optimized multi-threading engine
-            const processedImage = await this.imageProcessor.processImage(
+            // Process image using WebGPU-accelerated engine with CPU fallback
+            console.log(`🔄 [${sessionId}] Starting WebGPU-accelerated processing...`);
+            const processedImage = await this.imageProcessor.processImageNew(
                 imageBuffer,
                 config.scaleFactor,
+                config.format || 'jpeg',
+                config.quality || 95,
+                config.customFilename,
+                config.customLocation,
                 (progressData) => {
-                    console.log('📊 Progress callback received:', progressData);
+                    console.log(`📊 [${sessionId}] Progress: ${progressData.progress}% - ${progressData.stage || progressData.message}`);
                     session.progress = progressData.progress || 0;
-                    session.message = progressData.stage === 'processing' ? 'Multi-threaded processing...' : 
+                    session.message = progressData.stage === 'processing' ? 'WebGPU processing...' : 
                                       progressData.stage === 'complete' ? 'Processing complete!' : 
-                                      'Processing...';
+                                      progressData.message || 'Processing...';
+                },
+                // NEW: Pass parallel processing options
+                {
+                    algorithm: config.algorithm || 'bicubic',
+                    parallelConcurrency: config.parallelConcurrency || 6,
+                    enableParallelProcessing: config.enableParallelProcessing !== false
                 }
             );
+            stepTimes.sharpProcessing = Date.now();
+            console.log(`✅ [${sessionId}] Sharp processing: ${stepTimes.sharpProcessing - stepTimes.bufferConvert}ms`);
             
             // Get image info for result metadata
+            console.log(`🔄 [${sessionId}] Getting image metadata...`);
             const imageInfo = await this.imageProcessor.getImageInfo(imageBuffer);
+            stepTimes.metadata = Date.now();
+            console.log(`✅ [${sessionId}] Metadata extraction: ${stepTimes.metadata - stepTimes.sharpProcessing}ms`);
+            console.log(`📏 [${sessionId}] Original: ${imageInfo.width}×${imageInfo.height}, Target: ${Math.round(imageInfo.width * config.scaleFactor)}×${Math.round(imageInfo.height * config.scaleFactor)}`);
+            
+            // Extract buffer from WebGPU result
+            const resultBuffer = processedImage.data || processedImage.buffer || processedImage;
+            
+            console.log(`🔍 [${sessionId}] Debug - processedImage type:`, typeof processedImage);
+            console.log(`🔍 [${sessionId}] Debug - processedImage keys:`, Object.keys(processedImage || {}));
+            console.log(`🔍 [${sessionId}] Debug - resultBuffer type:`, typeof resultBuffer);
+            console.log(`🔍 [${sessionId}] Debug - resultBuffer is Buffer:`, Buffer.isBuffer(resultBuffer));
+            
             const result = {
-                buffer: processedImage.buffer || processedImage,
+                buffer: resultBuffer,
                 format: processedImage.format || 'png',
                 extension: processedImage.extension || 'png',
-                fileSize: (processedImage.buffer || processedImage).length,
+                fileSize: resultBuffer.length,
                 dimensions: {
-                    width: Math.round(imageInfo.width * config.scaleFactor),
-                    height: Math.round(imageInfo.height * config.scaleFactor)
+                    width: processedImage.width || Math.round(imageInfo.width * config.scaleFactor),
+                    height: processedImage.height || Math.round(imageInfo.height * config.scaleFactor)
                 }
             };
             
             // Save to user's downloads folder using the new format structure
+            console.log(`🔄 [${sessionId}] Saving file to disk...`);
             const saveResult = await this.fileManager.saveProcessedImage(
-                processedImage,
+                resultBuffer,
                 sessionId,
                 config.customFilename,
                 config.customLocation
             );
+            stepTimes.fileSave = Date.now();
+            console.log(`✅ [${sessionId}] File save: ${stepTimes.fileSave - stepTimes.metadata}ms`);
             
             session.status = 'complete';
             session.progress = 100;
@@ -539,7 +779,19 @@ class ProEngineDesktopService {
                 processingTime: session.endTime - session.startTime
             };
             
-            console.log(`✅ Processing complete for session ${sessionId}: ${session.result.filename}`);
+            const totalTime = session.endTime - session.startTime;
+            console.log(`🎉 [${sessionId}] COMPLETE - Total: ${totalTime}ms`);
+            console.log(`📊 [${sessionId}] Breakdown: Buffer(${stepTimes.bufferConvert - stepTimes.start}ms) + Sharp(${stepTimes.sharpProcessing - stepTimes.bufferConvert}ms) + Metadata(${stepTimes.metadata - stepTimes.sharpProcessing}ms) + Save(${stepTimes.fileSave - stepTimes.metadata}ms)`);
+            console.log(`✅ [${sessionId}] Result: ${session.result.filename} (${session.result.dimensions.width}×${session.result.dimensions.height})`);
+            
+            // Store processed image buffer for preview endpoint
+            console.log(`💾 [${sessionId}] Storing processed image buffer for preview (${result.fileSize} bytes)`);
+            this.processedImages.set(sessionId, {
+                buffer: result.buffer,
+                format: result.format,
+                dimensions: result.dimensions,
+                timestamp: Date.now()
+            });
             
         } catch (error) {
             console.error(`❌ Processing failed for session ${sessionId}:`, error);
@@ -573,7 +825,11 @@ class ProEngineDesktopService {
                                       progressData.stage === 'processing' ? 'AI-enhanced processing...' :
                                       'Processing...';
                 },
-                config.aiPreferences
+                {
+                    ...config.aiPreferences,
+                    outputFormat: config.format,
+                    quality: config.quality
+                }
             );
             
             // Get image info for result metadata
@@ -671,19 +927,101 @@ class ProEngineDesktopService {
             console.error(`Failed to cleanup session ${sessionId}:`, error);
         }
     }
+
+    /**
+     * Get WebGPU recommendation based on server and client capabilities
+     */
+    getWebGPURecommendation(serverWebGPU, clientWebGPUInfo) {
+        // If either server or client doesn't support WebGPU, use CPU
+        if (!serverWebGPU?.serverSupported || !clientWebGPUInfo?.supported) {
+            return {
+                method: 'use-cpu',
+                reason: !serverWebGPU?.serverSupported 
+                    ? 'Server hardware does not support WebGPU'
+                    : 'Client browser does not support WebGPU',
+                confidence: 'high'
+            };
+        }
+
+        // Both support WebGPU - determine best approach
+        const serverPerf = this.hardwareDetector.estimateWebGPUPerformance();
+        const clientPerf = clientWebGPUInfo.performanceEstimate;
+
+        // If both have good performance estimates, recommend WebGPU
+        if (serverPerf?.performanceMultiplier >= 3 && clientPerf?.performanceScore >= 3) {
+            return {
+                method: 'use-webgpu',
+                reason: 'Both server and client support high-performance WebGPU',
+                confidence: 'high',
+                expectedSpeedup: Math.min(serverPerf.performanceMultiplier, clientPerf.speedupMultiplier)
+            };
+        }
+
+        // If performance is marginal, provide cautious recommendation
+        if (serverPerf?.performanceMultiplier >= 2 || clientPerf?.performanceScore >= 2) {
+            return {
+                method: 'try-webgpu-with-fallback',
+                reason: 'WebGPU may provide performance benefits, fallback to CPU if issues occur',
+                confidence: 'medium',
+                expectedSpeedup: Math.min(serverPerf?.performanceMultiplier || 2, clientPerf?.speedupMultiplier || 2)
+            };
+        }
+
+        // Low performance or compatibility concerns
+        return {
+            method: 'use-cpu',
+            reason: 'WebGPU performance improvement uncertain, CPU processing more reliable',
+            confidence: 'medium'
+        };
+    }
     
     async start() {
         try {
-            // Initialize components
-            await this.hardwareDetector.initialize();
-            await this.imageProcessor.initialize();
-            await this.fileManager.initialize();
+            // Initialize components with error handling to prevent startup failure
+            try {
+                await this.hardwareDetector.initialize();
+                console.log('✅ Hardware detector initialized');
+            } catch (error) {
+                console.warn('⚠️ Hardware detector initialization failed:', error.message);
+            }
             
+            try {
+                await this.imageProcessor.initialize();
+                console.log('✅ Image processor initialized');
+            } catch (error) {
+                console.warn('⚠️ Image processor initialization failed, using fallback mode:', error.message);
+            }
+            
+            try {
+                await this.fileManager.initialize();
+                console.log('✅ File manager initialized');
+            } catch (error) {
+                console.warn('⚠️ File manager initialization failed:', error.message);
+            }
+            
+            // Find an available port
+            this.port = await this.findAvailablePort();
+            console.log(`�� Binding service to port: ${this.port}`);
+
             // Start server
             this.server = this.app.listen(this.port, () => {
                 console.log(`🚀 Pro Engine Desktop Service running on port ${this.port}`);
+                console.log(`📊 Health check: http://localhost:${this.port}/health`);
+                console.log(`🔧 Processing endpoint: http://localhost:${this.port}/api/process-large`);
                 console.log(`📊 System capabilities:`, this.hardwareDetector.getCapabilities());
                 console.log(`💾 Output directory:`, this.fileManager.getOutputDirectory());
+            });
+
+            // Handle server errors gracefully
+            this.server.on('error', (error) => {
+                if (error.code === 'EADDRINUSE') {
+                    console.error(`❌ Port ${this.port} is already in use`);
+                    console.log('🔄 Attempting to find another port...');
+                    this.start(); // Retry with a different port
+                } else {
+                    console.error('❌ Server error:', error);
+                    process.exit(1);
+                }
             });
             
             // Cleanup interval for old sessions
@@ -692,8 +1030,9 @@ class ProEngineDesktopService {
             }, 30 * 60 * 1000); // Every 30 minutes
             
         } catch (error) {
-            console.error('Failed to start Pro Engine Desktop Service:', error);
-            process.exit(1);
+            console.error('❌ Service startup failed:', error);
+            console.log('🔄 Retrying startup in 5 seconds...');
+            setTimeout(() => this.start(), 5000);
         }
     }
     

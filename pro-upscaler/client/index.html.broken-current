@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Upscaler</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-background text-foreground antialiased">
+    <div class="app-layout">
+
+        <!-- Header Pill -->
+        <header class="header-pill">
+            <div class="header-content">
+                <div class="logo-section" style="display: flex; align-items: center; gap: 0.75rem;">
+                    <h1>Pro Upscaler</h1>
+                    <button id="header-upload-btn" class="header-button" title="Upload Image" style="padding: 0.4em 0.9em; font-size: 1em; display: flex; align-items: center; gap: 0.4em;">
+                        <svg style="height: 1.2em; width: 1.2em;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span style="font-weight: 500;">Upload</span>
+                    </button>
+                    <input type="file" id="header-file-input" accept="image/*" class="hidden">
+                    
+                    <!-- Download Button -->
+                    <div class="download-button-container" style="position: relative;">
+                        <button id="header-download-btn" class="header-button" title="Download Upscaled Image" style="padding: 0.4em 0.9em; font-size: 1em; display: flex; align-items: center; gap: 0.4em; opacity: 0.5; cursor: not-allowed;" disabled>
+                            <svg style="height: 1.2em; width: 1.2em;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m0 0l-3-3m3 3l3-3M5 21h14"/>
+                            </svg>
+                            <span style="font-weight: 500;">Download</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="status-section">
+                    <!-- User Authentication Section -->
+                    <div class="user-section">
+                        <!-- When signed out -->
+                        <div id="signed-out-state">
+                            <button id="signin-button" class="header-button">Sign In</button>
+                            <button id="signup-button" class="header-button secondary">Sign Up</button>
+                        </div>
+                        
+                        <!-- When signed in -->
+                        <div id="signed-in-state" class="hidden">
+                            <div class="user-info">
+                                <span id="user-email"></span>
+                                <span id="user-tier" class="tier-badge"></span>
+                            </div>
+                            <div class="user-menu">
+                                <button id="user-menu-button" class="user-menu-trigger">⚙️</button>
+                                <div id="user-dropdown" class="user-dropdown hidden">
+                                    <a href="#" id="view-usage">Usage</a>
+                                    <a href="#" id="manage-subscription">Subscription</a>
+                                    <a href="#" id="signout-button">Sign Out</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="pro-engine-status" class="status-indicator">🔧 Checking Pro Engine...</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content-area">
+            <!-- Canvas Info Overlays -->
+            <div class="canvas-overlays">
+                <!-- Image Details Overlay -->
+                <div class="canvas-overlay image-details-overlay" id="image-details-overlay">
+                    <div id="no-image-text" class="overlay-text">No image loaded</div>
+                    <div id="image-info-text" class="overlay-text hidden">
+                        <span id="image-dimensions-text">-</span> • 
+                        <span id="image-size-text">-</span> • 
+                        <span id="image-format-text">-</span>
+                    </div>
+                </div>
+                
+                <!-- Output Preview Overlay -->
+                <div class="canvas-overlay output-preview-overlay" id="output-preview-overlay">
+                    <div class="overlay-text">
+                        Output: <span id="output-dimensions-text">-</span> • 
+                        <span id="estimated-size-text">-</span> • 
+                        <span id="estimated-time-text">-</span>
+                    </div>
+                    <div class="overlay-text">
+                        File: <span id="preview-filename-text">Auto-generated</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas Notifications Container (top-left anchored) -->
+            <div id="canvas-notifications" class="canvas-notifications" aria-live="polite" aria-atomic="true"></div>
+
+            <!-- Completed Results Panel (moved to canvas area) -->
+            <div class="results-overlay hidden" id="results-overlay">
+                <div class="card compact-card" id="completed-results-card">
+                    <div class="card-header compact-header">
+                        <h3 class="card-title text-sm font-semibold flex items-center">
+                            <svg class="h-4 w-4 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            Upscaling Complete
+                        </h3>
+                    </div>
+                    <div class="card-content compact-content space-y-3">
+                        <!-- Results Details -->
+                        <div class="space-y-2 text-xs">
+                            <div class="flex justify-between">
+                                <span class="text-muted-foreground">Final Size:</span>
+                                <span class="font-medium" id="final-dimensions-left">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-muted-foreground">File Size:</span>
+                                <span class="font-medium" id="final-size-left">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-muted-foreground">Time:</span>
+                                <span class="font-medium" id="actual-time-left">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-muted-foreground">Format:</span>
+                                <span class="font-medium" id="final-format-left">-</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="space-y-2">
+                            
+                            <button class="btn-secondary w-full compact-btn" id="process-another-left">
+                                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                                Process Another
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="upload-container">
+                <!-- Upload Area (when no image) -->
+                <div class="upload-area-single-pane" id="upload-area">
+                    <input type="file" id="file-input" accept="image/*" class="hidden">
+                    <div class="flex flex-col items-center justify-center h-full space-y-4">
+                        <div class="h-16 w-16 rounded-full bg-muted/30 flex items-center justify-center">
+                            <svg class="h-8 w-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                            </svg>
+                        </div>
+                        <div class="text-center">
+                            <h2 class="text-xl font-semibold mb-2">Drop your image here</h2>
+                            <p class="text-muted-foreground mb-4">or click to browse files</p>
+                            <button class="btn-primary">
+                                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                Choose Image
+                            </button>
+                        </div>
+                        <p class="text-xs text-muted-foreground">Supports PNG, JPEG, WebP, TIFF up to 1.5GB</p>
+                    </div>
+                </div>
+                
+                <!-- Image Preview (when image loaded) -->
+                <div class="image-preview-single-pane hidden" id="preview-area">
+                    <div class="w-full h-full flex items-center justify-center bg-muted/10 rounded-lg border-2 border-dashed border-border">
+                        <img id="preview-image" alt="Preview" class="object-contain rounded-lg shadow-sm">
+                    </div>
+                </div>
+
+
+            </div>
+        </main>
+
+        <!-- Sidebar Pill -->
+        <aside class="sidebar-pill">
+            <div class="sidebar-content">
+                
+                <!-- Usage Section -->
+                <div class="usage-section">
+                    <h3>Usage This Month</h3>
+                    <div class="usage-stats">
+                        <div class="usage-item">
+                            <span class="usage-label">Standard Upscaling</span>
+                            <span class="usage-count" id="standard-usage">-</span>
+                        </div>
+                        <div class="usage-item">
+                            <span class="usage-label">High Resolution</span>
+                            <span class="usage-count" id="highres-usage">-</span>
+                        </div>
+                        <div class="usage-item">
+                            <span class="usage-label">AI Enhancement</span>
+                            <span class="usage-count" id="ai-usage">-</span>
+                        </div>
+                    </div>
+
+                </div>
+                
+                <!-- Settings Card - Compact -->
+                <div class="card compact-card">
+                    <div class="card-header compact-header">
+                        <h3 class="card-title text-xs font-semibold">Settings</h3>
+                    </div>
+                    <div class="card-content compact-content space-y-2">
+                        <div class="form-group">
+                            <label class="form-label text-xxs" for="scale-factor">Scale Factor</label>
+                            <select id="scale-factor" class="select compact-select">
+                                <option value="2">2× (Double Size)</option>
+                                <option value="4">4× (Quadruple Size)</option>
+                                <option value="6">6× (6 Times Larger)</option>
+                                <option value="8">8× (8 Times Larger)</option>
+                                <option value="10" selected>10× (10 Times Larger)</option>
+                                <option value="12">12× (12 Times Larger)</option>
+                                <option value="15">15× (15 Times Larger)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label text-xxs" for="output-format">Output Format</label>
+                            <select id="output-format" class="select compact-select">
+                                <option value="png" selected>PNG (Best Quality)</option>
+                                <option value="jpeg">JPEG (Balanced)</option>
+                                <option value="webp">WebP (Modern)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label text-xxs" for="processing-mode">Processing Mode</label>
+                            <select id="processing-mode" class="select compact-select">
+                                <option value="speed" selected>Speed (Ultra-Fast)</option>
+                                <option value="balanced">Balanced</option>
+                                <option value="quality">Quality (Best)</option>
+                            </select>
+                        </div>
+
+                        <!-- AI Enhancement Toggle -->
+                        <div class="form-group">
+                            <div class="flex items-center justify-between">
+                                <label class="form-label text-xxs">AI Face Enhancement</label>
+                                <div class="flex items-center space-x-2">
+                                    <input type="checkbox" id="ai-enhancement-toggle" checked class="checkbox compact-checkbox">
+                                    <span class="text-xxs text-muted-foreground">+4-8s</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group hidden" id="quality-control">
+                            <label class="form-label text-xxs" for="quality-slider">
+                                Quality: <span id="quality-value" class="font-medium">95</span>
+                            </label>
+                            <input type="range" id="quality-slider" min="1" max="100" value="95" class="slider compact-slider">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Settings Card - Compact -->
+                <div class="card compact-card">
+                    <div class="card-header compact-header">
+                        <h3 class="card-title text-xs font-semibold">File Settings</h3>
+                    </div>
+                    <div class="card-content compact-content space-y-2">
+                        <!-- Custom Filename -->
+                        <div class="form-group">
+                            <label class="form-label text-xxs" for="custom-filename">Custom Filename</label>
+                            <input type="text" id="custom-filename" class="input compact-input" 
+                                   placeholder="Leave blank for auto-generated">
+                            <p class="text-xxs text-muted-foreground" style="margin-top: 0.125rem;">
+                                Extension added automatically
+                            </p>
+                        </div>
+
+                        <!-- Download Location -->
+                        <div class="form-group">
+                            <label class="form-label text-xxs" for="download-location">Download Location</label>
+                            <div class="flex space-x-1">
+                                <input type="text" id="download-location" class="input compact-input flex-1" 
+                                       value="Downloads/ProUpscaler" readonly>
+                                <button class="btn-secondary compact-btn px-2" id="browse-location" title="Browse for folder">
+                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2V7z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <div class="action-button-container">
+                    <button class="btn-primary w-full px-6 py-3" id="start-processing" disabled>
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        Start Upscaling
+                    </button>
+                </div>
+
+            </div>
+        </aside>
+
+        <!-- Footer Pill -->
+        <footer class="footer-pill hidden" id="progress-footer">
+            <div class="footer-content">
+                <div class="flex items-center space-x-3">
+                    <div class="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full flex-shrink-0"></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-sm truncate">Processing Image</div>
+                        <div class="text-xs text-muted-foreground truncate" id="progress-text">Initializing...</div>
+                    </div>
+                    <div class="text-sm font-medium flex-shrink-0" id="progress-percent">0%</div>
+                    <div class="text-xs text-muted-foreground flex-shrink-0" id="remaining-time">~5s</div>
+                </div>
+                
+                <div class="progress-container mt-2">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- Authentication Modal -->
+    <div id="auth-modal" class="auth-modal hidden">
+        <div class="auth-modal-overlay"></div>
+        <div class="auth-modal-content">
+            <div class="auth-modal-header">
+                <h2 id="auth-modal-title">Sign In</h2>
+                <button id="auth-modal-close" class="auth-modal-close">&times;</button>
+            </div>
+            
+            <!-- Sign In Form -->
+            <form id="signin-form" class="auth-form">
+                <div class="form-group">
+                    <label for="signin-email">Email</label>
+                    <input type="email" id="signin-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="signin-password">Password</label>
+                    <input type="password" id="signin-password" required>
+                </div>
+                <button type="submit" class="auth-button">Sign In</button>
+                <p class="auth-switch">
+                    Don't have an account? 
+                    <a href="#" id="show-signup">Sign up</a>
+                </p>
+            </form>
+            
+            <!-- Sign Up Form -->
+            <form id="signup-form" class="auth-form hidden">
+                <div class="form-group">
+                    <label for="signup-email">Email</label>
+                    <input type="email" id="signup-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Password</label>
+                    <input type="password" id="signup-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-confirm">Confirm Password</label>
+                    <input type="password" id="signup-confirm" required>
+                </div>
+                <button type="submit" class="auth-button">Create Account</button>
+                <p class="auth-switch">
+                    Already have an account? 
+                    <a href="#" id="show-signin">Sign in</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+
+
+    <!-- Scripts -->
+    <script src="js/supabase-auth-service.js"></script>
+    <script src="js/file-handler.js"></script>
+    <script src="js/upscaler.js"></script>
+    <script src="js/pro-engine-interface.js"></script>
+    <script src="js/pro-engine-downloader.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

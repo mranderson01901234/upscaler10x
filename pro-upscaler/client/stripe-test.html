@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stripe Modal Test</title>
+    <style>
+        body {
+            background: #0f172a;
+            color: #f8fafc;
+            font-family: Inter, sans-serif;
+            padding: 20px;
+        }
+        
+        .test-button {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        
+        .debug-info {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Stripe Modal Debug Test</h1>
+    
+    <div class="debug-info" id="debug-info">
+Initializing...
+    </div>
+    
+    <button class="test-button" onclick="testStripeModal()">Test Stripe Modal</button>
+    <button class="test-button" onclick="checkStripeStatus()">Check Stripe Status</button>
+    
+    <script src="js/stripe-modal.js"></script>
+    <script>
+        let debugInfo = document.getElementById('debug-info');
+        let stripeModal = null;
+        
+        function log(message) {
+            console.log(message);
+            debugInfo.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+        }
+        
+        // Mock payment manager
+        const mockPaymentManager = {
+            baseUrl: 'http://localhost:3002',
+            authToken: 'test-token',
+            showSuccess: (msg) => log('SUCCESS: ' + msg),
+            showError: (msg) => log('ERROR: ' + msg),
+            loadCurrentSubscription: () => log('Loading subscription...'),
+            updateSubscriptionUI: () => log('Updating UI...')
+        };
+        
+        // Initialize Stripe modal
+        document.addEventListener('DOMContentLoaded', () => {
+            log('DOM loaded, initializing Stripe modal...');
+            try {
+                stripeModal = new StripeModal(mockPaymentManager);
+                log('Stripe modal created successfully');
+            } catch (error) {
+                log('Error creating Stripe modal: ' + error.message);
+            }
+        });
+        
+        function testStripeModal() {
+            log('Testing Stripe modal...');
+            
+            if (!stripeModal) {
+                log('ERROR: Stripe modal not initialized');
+                return;
+            }
+            
+            const mockTierData = {
+                name: 'Pro',
+                price_monthly: 19.99
+            };
+            
+            try {
+                stripeModal.showModal(mockTierData);
+                log('Modal show attempted');
+            } catch (error) {
+                log('Error showing modal: ' + error.message);
+            }
+        }
+        
+        function checkStripeStatus() {
+            log('Checking Stripe status...');
+            log('window.Stripe: ' + (window.Stripe ? 'Available' : 'Not available'));
+            log('stripeModal: ' + (stripeModal ? 'Created' : 'Not created'));
+            
+            if (stripeModal) {
+                log('stripeModal.stripe: ' + (stripeModal.stripe ? 'Available' : 'Not available'));
+                log('stripeModal.elements: ' + (stripeModal.elements ? 'Available' : 'Not available'));
+            }
+            
+            // Check if modal DOM exists
+            const modal = document.getElementById('stripe-payment-modal');
+            log('Modal DOM: ' + (modal ? 'Exists' : 'Not found'));
+            
+            const cardElement = document.getElementById('card-element');
+            log('Card element: ' + (cardElement ? 'Exists' : 'Not found'));
+        }
+        
+        // Log any console errors
+        window.addEventListener('error', (e) => {
+            log('JavaScript Error: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
+        });
+    </script>
+</body>
+</html> 

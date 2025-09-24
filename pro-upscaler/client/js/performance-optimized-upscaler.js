@@ -152,20 +152,11 @@ export class PerformanceOptimizedUpscaler {
     
     originalCtx.putImageData(properOriginalImageData, 0, 0);
     
-    // Scale to preview size (FAST OPERATION)
+    // Scale to preview size (FAST OPERATION) - NO OVERLAY for clean display
     const previewCtx = previewCanvas.getContext('2d');
     previewCtx.imageSmoothingEnabled = true;
     previewCtx.imageSmoothingQuality = 'high';
     previewCtx.drawImage(originalCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
-    
-    // Add preview indicator
-    previewCtx.fillStyle = 'rgba(0, 100, 255, 0.1)';
-    previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
-    
-    // Add text overlay
-    previewCtx.fillStyle = 'rgba(0, 100, 255, 0.8)';
-    previewCtx.font = 'bold 16px Arial';
-    previewCtx.fillText(`${targetWidth}×${targetHeight} Preview`, 10, 30);
     
     console.log(`🖼️ Created smart preview: ${previewCanvas.width}×${previewCanvas.height}`);
     
@@ -197,13 +188,13 @@ export class PerformanceOptimizedUpscaler {
       // Create intermediate result
       const intermediateResult = await this.performSafeUpscaling(imageData, intermediateScale, progressCallback);
       
-      // Return virtual result with target dimensions
+      // Return virtual result with target dimensions for compatibility
       return {
-        width: targetWidth,
-        height: targetHeight,
-        imageData: intermediateResult.imageData, // Store the safe intermediate data
+        width: intermediateWidth,
+        height: intermediateHeight,
+        imageData: intermediateResult.imageData,
         canvas: intermediateResult.canvas,
-        isVirtual: true // Mark as virtual
+        isVirtual: false // This is a real upscaled result, just browser-limited
       };
     }
     

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pro Upscaler</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="premium-header.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -14,308 +15,532 @@
 <body class="bg-background text-foreground antialiased">
     <div class="app-layout">
 
-        <!-- Header Pill -->
-        <header class="header-pill">
-            <div class="header-content">
-                <!-- Left side: Logo and Pro Engine status -->
-                <div class="left-section" style="display: flex; align-items: center; gap: 1rem;">
-                    <h1>Pro Upscaler</h1>
-                    <div id="pro-engine-status" class="status-indicator">
-                        <span class="status-circle" id="status-circle">●</span>
-                        <span>Pro Engine</span>
+        <!-- Premium Header -->
+        <header class="premium-header" id="premium-header">
+            <div class="header-container">
+                
+                <!-- Left Section: Brand & Navigation -->
+                <div class="brand-navigation-area">
+                    <!-- Brand Section -->
+                    <div class="brand-section" id="brand-section">
+                        <div class="brand-logo">
+                            <div class="logo-icon">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#808080"/>
+                                            <stop offset="100%" style="stop-color:#606060"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="url(#logoGradient)" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="M2 17L12 22L22 17" stroke="url(#logoGradient)" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="M2 12L12 17L22 12" stroke="url(#logoGradient)" stroke-width="2" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <div class="brand-text">
+                                <h1 class="app-title">Pro Upscaler</h1>
+                                <span class="version-indicator">v2.0</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Pro Engine Status (moved next to brand) -->
+                        <div class="brand-engine-status" id="brand-engine-status">
+                            <div class="status-indicator compact" id="pro-engine-status">
+                                <div class="status-dot checking" id="engine-status-dot"></div>
+                                <span class="status-text" id="engine-status-text">Checking Pro Engine...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contextual Navigation -->
+                    <nav class="contextual-navigation" id="contextual-navigation">
+                        <div class="nav-items" id="nav-items">
+                            <!-- Dynamic navigation items will be inserted here -->
+                        </div>
+                    </nav>
+                </div>
+
+                <!-- Center Section: Main Navigation -->
+                <div class="center-context-area" id="center-context-area">
+                    <!-- Main Navigation Buttons -->
+                    <div class="center-navigation" id="center-navigation">
+                        <a href="dashboard.html" class="center-nav-btn" id="dashboard-nav-btn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                                <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                                <rect x="14" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                                <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                            </svg>
+                            <span>Dashboard</span>
+                        </a>
+                        
+                        <a href="index.html" class="center-nav-btn active" id="processing-nav-btn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Processing</span>
+                        </a>
+                        
+                        <button class="center-nav-btn" id="pricing-nav-btn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M7 17L17 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M7 7h10v10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Upgrade</span>
+                        </button>
+                    </div>
+
+                    <!-- Processing Status (when active) -->
+                    <div class="status-section" id="processing-status" style="display: none;">
+                        <div class="status-indicator processing">
+                            <div class="status-icon">
+                                <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" opacity="0.3"/>
+                                    <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <span class="status-text">Processing...</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Right side: Action buttons and Auth -->
-                <div class="right-section" style="display: flex; align-items: center; gap: 1rem;">
-                    <!-- Action Buttons -->
-                    <div class="action-buttons" style="display: flex; align-items: center; gap: 0.75rem;">
-                        <button id="header-upload-btn" class="action-button upload-button" title="Upload Image" style="padding: 0.375em; font-size: 1em; display: flex; align-items: center; justify-content: center;">
-                            <svg style="height: 1em; width: 1em;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                            </svg>
-                        </button>
-                        <input type="file" id="header-file-input" accept="image/*" class="hidden">
+                <!-- Right Section: User Area & Actions -->
+                <div class="user-actions-area">
+                    
+                    <!-- User Account Area -->
+                    <div class="user-account-area" id="user-account-area">
                         
-                        <!-- Download Button -->
-                        <div class="download-button-container" style="position: relative;">
-                            <button id="header-download-btn" class="action-button download-button" title="Download Upscaled Image" style="padding: 0.375em; font-size: 1em; display: flex; align-items: center; justify-content: center; opacity: 0.5; cursor: not-allowed;" disabled>
-                                <svg style="height: 1em; width: 1em;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m0 0l-3-3m3 3l3-3M5 21h14"/>
+                        <!-- Signed Out State -->
+                        <div class="auth-buttons" id="signed-out-state">
+                            <button class="auth-btn secondary" id="signin-button">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4m-5-4l4-4-4-4m4 4H3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
+                                <span>Sign In</span>
+                            </button>
+                            <button class="auth-btn primary" id="signup-button">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2m7-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 2v6m3-3h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span>Get Started</span>
                             </button>
                         </div>
-                    </div>
 
-                    <!-- User Authentication Section -->
-                    <div class="user-section">
-                        <!-- When signed out -->
-                        <div id="signed-out-state">
-                            <button id="signin-button" class="auth-button primary-auth">Sign In</button>
-                            <button id="signup-button" class="auth-button secondary-auth">Sign Up</button>
-                        </div>
-                        
-                        <!-- When signed in -->
-                        <div id="signed-in-state" class="hidden">
-                            <div class="user-info">
-                                <span id="user-email"></span>
-                                <span id="user-tier" class="tier-badge"></span>
+                        <!-- Signed In State -->
+                        <div class="user-profile-area hidden" id="signed-in-state">
+                            
+                            <!-- Subscription Status - Removed for cleaner header -->
+
+                            <!-- Notifications Bell -->
+                            <div class="notifications-area" id="notifications-area">
+                                <button class="notification-btn" id="notification-btn" title="Notifications">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span class="notification-dot hidden" id="notification-dot"></span>
+                                </button>
                             </div>
-                            <div class="user-menu">
-                                <button id="user-menu-button" class="user-menu-trigger">⚙️</button>
-                                <div id="user-dropdown" class="user-dropdown hidden">
-                                    <a href="#" id="view-usage">Usage</a>
-                                    <a href="#" id="manage-subscription">Subscription</a>
-                                    <a href="#" id="signout-button">Sign Out</a>
+
+                            <!-- User Profile Dropdown -->
+                            <div class="user-profile-dropdown" id="user-profile-dropdown">
+                                <button class="profile-trigger" id="profile-trigger">
+                                    <div class="user-avatar" id="user-avatar">
+                                        <span class="avatar-text" id="avatar-text">U</span>
+                                    </div>
+                                    <div class="user-info" id="user-info">
+                                        <span class="user-email" id="user-email">user@example.com</span>
+                                    </div>
+                                    <svg class="dropdown-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+
+                                <!-- Dropdown Menu -->
+                                <div class="dropdown-menu hidden" id="user-dropdown-menu">
+                                    <div class="dropdown-header">
+                                        <div class="dropdown-user-info">
+                                            <span class="dropdown-email" id="dropdown-user-email">user@example.com</span>
+                                            <span class="dropdown-tier" id="dropdown-user-tier">Free Plan</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="dropdown-divider"></div>
+                                    
+                                    <div class="dropdown-items">
+                                        <a href="dashboard.html" class="dropdown-item">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                                                <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                                                <rect x="14" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                                                <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                                            </svg>
+                                            <span>Dashboard</span>
+                                        </a>
+                                        
+                                        <a href="#" class="dropdown-item" id="view-usage">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+                                                <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                            <span>Usage & Billing</span>
+                                        </a>
+                                        
+                                        <a href="#" class="dropdown-item" id="manage-subscription">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                                                <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2"/>
+                                                <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2"/>
+                                            </svg>
+                                            <span>Subscription</span>
+                                        </a>
+                                        
+                                        <div class="dropdown-divider"></div>
+                                        
+                                        <a href="#" class="dropdown-item" id="account-settings">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2"/>
+                                            </svg>
+                                            <span>Account Settings</span>
+                                        </a>
+                                        
+                                        <a href="#" class="dropdown-item text-red-400" id="signout-button">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14l4-4-4-4m4 4H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                            <span>Sign Out</span>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Mobile Menu Overlay -->
+            <div class="mobile-menu-overlay hidden" id="mobile-menu-overlay">
+                <div class="mobile-menu">
+                    <div class="mobile-menu-header">
+                        <div class="mobile-brand">
+                            <div class="logo-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="url(#logoGradient)" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="M2 17L12 22L22 17" stroke="url(#logoGradient)" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="M2 12L12 17L22 12" stroke="url(#logoGradient)" stroke-width="2" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <span class="mobile-app-title">Pro Upscaler</span>
+                        </div>
+                        <button class="mobile-menu-close" id="mobile-menu-close">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+                                <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="mobile-menu-content" id="mobile-menu-content">
+                        <!-- Mobile navigation items will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Menu Button -->
+            <button class="mobile-menu-button" id="mobile-menu-button">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2"/>
+                    <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2"/>
+                    <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </button>
         </header>
 
         <!-- Main Content Area -->
         <main class="main-content-area">
-            <!-- Canvas Info Overlays -->
-            <div class="canvas-overlays">
-                <!-- Image Details Overlay -->
-                <div class="canvas-overlay image-details-overlay" id="image-details-overlay">
-                    <div id="no-image-text" class="overlay-text">No image loaded</div>
-                    <div id="image-info-text" class="overlay-text hidden">
-                        <span id="image-dimensions-text">-</span> • 
-                        <span id="image-size-text">-</span> • 
-                        <span id="image-format-text">-</span>
-                    </div>
-                </div>
+            <!-- Enterprise Layout: Processing Panel + Images + Share Panel -->
+            <div class="enterprise-layout">
                 
-                <!-- Output Preview Overlay -->
-                <div class="canvas-overlay output-preview-overlay" id="output-preview-overlay">
-                    <div class="overlay-text">
-                        Output: <span id="output-dimensions-text">-</span> • 
-                        <span id="estimated-size-text">-</span> • 
-                        <span id="estimated-time-text">-</span>
+                <!-- Processing Status Panel -->
+                <aside class="processing-status-panel" id="processing-status-panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Processing Status</h3>
                     </div>
-                    <div class="overlay-text">
-                        File: <span id="preview-filename-text">Auto-generated</span>
-                    </div>
-                </div>
-            </div>
+                    
+                    <div class="panel-content">
 
-            <!-- Canvas Notifications Container (top-left anchored) -->
-            <div id="canvas-notifications" class="canvas-notifications" aria-live="polite" aria-atomic="true"></div>
-
-            <!-- Completed Results Panel (moved to canvas area) -->
-            <div class="results-overlay hidden" id="results-overlay">
-                <div class="card compact-card" id="completed-results-card">
-                    <div class="card-header compact-header">
-                        <h3 class="card-title text-sm font-semibold flex items-center">
-                            <svg class="h-4 w-4 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
-                            Upscaling Complete
-                        </h3>
-                    </div>
-                    <div class="card-content compact-content space-y-3">
-                        <!-- Results Details -->
-                        <div class="space-y-2 text-xs">
-                            <div class="flex justify-between">
-                                <span class="text-muted-foreground">Final Size:</span>
-                                <span class="font-medium" id="final-dimensions-left">-</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-muted-foreground">File Size:</span>
-                                <span class="font-medium" id="final-size-left">-</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-muted-foreground">Time:</span>
-                                <span class="font-medium" id="actual-time-left">-</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-muted-foreground">Format:</span>
-                                <span class="font-medium" id="final-format-left">-</span>
-                            </div>
-                        </div>
-                        
-                        <!-- Action Buttons -->
-                        <div class="space-y-2">
+                        <!-- Enhancement Progress -->
+                        <div class="status-section" id="enhancement-progress-section">
                             
-                            <button class="btn-secondary w-full compact-btn" id="process-another-left">
-                                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                                </svg>
-                                Process Another
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            <div class="upload-container">
-                <!-- Upload Area (when no image) -->
-                <div class="upload-area-single-pane" id="upload-area">
-                    <input type="file" id="file-input" accept="image/*" class="hidden">
-                    <div class="flex flex-col items-center justify-center h-full space-y-4">
-                        <div class="h-16 w-16 rounded-full bg-muted/30 flex items-center justify-center">
-                            <svg class="h-8 w-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                            </svg>
-                        </div>
-                        <div class="text-center">
-                            <h2 class="text-xl font-semibold mb-2">Drop your image here</h2>
-                            <p class="text-muted-foreground mb-4">or click to browse files</p>
-                            <button class="btn-primary">
-                                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                </svg>
-                                Choose Image
-                            </button>
-                        </div>
-                        <p class="text-xs text-muted-foreground">Supports PNG, JPEG, WebP, TIFF up to 1.5GB</p>
-                    </div>
-                </div>
-                
-                <!-- Image Preview (when image loaded) -->
-                <div class="image-preview-single-pane hidden" id="preview-area">
-                    <div class="w-full h-full flex items-center justify-center bg-muted/10 rounded-lg border-2 border-dashed border-border">
-                        <img id="preview-image" alt="Preview" class="object-contain rounded-lg shadow-sm">
-                    </div>
-                </div>
-
-
-            </div>
-        </main>
-
-        <!-- Sidebar Pill -->
-        <aside class="sidebar-pill">
-            <div class="sidebar-content">
-                
-                <!-- Usage Section -->
-                <div class="usage-section">
-                    <h3>Usage This Month</h3>
-                    <div class="usage-stats">
-                        <div class="usage-item">
-                            <span class="usage-label">Standard Upscaling</span>
-                            <span class="usage-count" id="standard-usage">-</span>
-                        </div>
-                        <div class="usage-item">
-                            <span class="usage-label">High Resolution</span>
-                            <span class="usage-count" id="highres-usage">-</span>
-                        </div>
-                        <div class="usage-item">
-                            <span class="usage-label">AI Enhancement</span>
-                            <span class="usage-count" id="ai-usage">-</span>
-                        </div>
-                    </div>
-
-                </div>
-                
-                <!-- Settings Card - Compact -->
-                <div class="card compact-card">
-                    <div class="card-header compact-header">
-                        <h3 class="card-title text-xs font-semibold">Settings</h3>
-                    </div>
-                    <div class="card-content compact-content space-y-2">
-                        <div class="form-group">
-                            <label class="form-label text-xxs" for="scale-factor">Scale Factor</label>
-                            <select id="scale-factor" class="select compact-select">
-                                <option value="2">2× (Double Size)</option>
-                                <option value="4">4× (Quadruple Size)</option>
-                                <option value="6">6× (6 Times Larger)</option>
-                                <option value="8">8× (8 Times Larger)</option>
-                                <option value="10" selected>10× (10 Times Larger)</option>
-                                <option value="12">12× (12 Times Larger)</option>
-                                <option value="15">15× (15 Times Larger)</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label text-xxs" for="output-format">Output Format</label>
-                            <select id="output-format" class="select compact-select">
-                                <option value="jpeg" selected>JPEG (Fast, Compressed)</option>
-                                <option value="png">PNG (Uncompressed, Larger)</option>
-                                <option value="tiff">TIFF (Professional, Largest)</option>
-                            </select>
-                            <div class="format-info text-xxs text-muted-foreground" id="format-info" style="margin-top: 4px; font-size: 10px;">
-                                Fast processing, compressed files
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label text-xxs" for="processing-mode">Processing Mode</label>
-                            <select id="processing-mode" class="select compact-select">
-                                <option value="speed" selected>Speed (Ultra-Fast)</option>
-                                <option value="balanced">Balanced</option>
-                                <option value="quality">Quality (Best)</option>
-                            </select>
-                        </div>
-
-                        <!-- AI Enhancement Toggle -->
-                        <div class="form-group">
-                            <div class="flex items-center justify-between">
-                                <label class="form-label text-xxs">AI Face Enhancement</label>
-                                <div class="flex items-center space-x-2">
-                                    <input type="checkbox" id="ai-enhancement-toggle" checked class="checkbox compact-checkbox">
-                                    <span class="text-xxs text-muted-foreground">+4-8s</span>
+                            <div class="progress-container" style="background: #1a1a1a; border: 1px solid #333333; border-radius: 6px; padding: 10px; min-height: 50px;">
+                                <div class="progress-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <span id="progress-title" style="color: #e0e0e0; font-size: 12px; font-weight: 600;">Ready to Process</span>
+                                    <span id="progress-percentage" style="color: #a0a0a0; font-size: 11px; font-weight: 600;">0%</span>
+                                </div>
+                                
+                                <div class="progress-bar-container" style="width: 100%; height: 3px; background: #333333; border-radius: 2px; overflow: hidden; margin-bottom: 5px;">
+                                    <div id="progress-bar" style="height: 100%; background: #808080; width: 0%; transition: width 0.3s ease;"></div>
+                                </div>
+                                
+                                <div id="progress-description" style="color: #a0a0a0; font-size: 10px;">
+                                    Upload an image and click Start Processing
                                 </div>
                             </div>
                         </div>
 
-                        <div class="form-group hidden" id="quality-control">
-                            <label class="form-label text-xxs" for="quality-slider">
-                                Quality: <span id="quality-value" class="font-medium">95</span>
-                            </label>
-                            <input type="range" id="quality-slider" min="1" max="100" value="95" class="slider compact-slider">
+                        <!-- Processing Settings -->
+                        <div class="status-section" style="padding: 8px; background: #1a1a1a; border: 1px solid #333333; border-radius: 8px; margin-bottom: 6px;">
+                            <div class="section-title" style="font-size: 12px; margin-bottom: 8px;">EXPORT SETTING</div>
+                            <div class="settings-grid" style="gap: 8px; width: 100%;">
+                                <div class="setting-item" style="gap: 4px; width: 100%;">
+                                    <label class="setting-label" for="scale-factor" style="font-size: 12px; font-weight: 600;">Scale Factor</label>
+                                    <select id="scale-factor" class="setting-select" style="padding: 8px 10px; font-size: 12px; height: 34px; width: 100%; min-width: 200px;">
+                                        <option value="2x" selected>2x Enhancement</option>
+                                        <option value="4x">4x Enhancement</option>
+                                        <option value="6x">6x Enhancement</option>
+                                        <option value="8x">8x Enhancement</option>
+                                        <option value="10x">10x Enhancement</option>
+                                        <option value="12x">12x Enhancement</option>
+                                        <option value="15x">15x Maximum</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item" style="gap: 4px; width: 100%;">
+                                    <label class="setting-label" for="output-format" style="font-size: 12px; font-weight: 600;">Format</label>
+                                    <select id="output-format" class="setting-select" style="padding: 8px 10px; font-size: 12px; height: 34px; width: 100%; min-width: 200px;">
+                                        <option value="jpeg" selected>JPEG</option>
+                                        <option value="png">PNG</option>
+                                        <option value="tiff">TIFF</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item" style="gap: 4px; width: 100%;">
+                                    <label class="setting-label" style="font-size: 12px; font-weight: 600;">Enhancement Type</label>
+                                    <select id="enhancement-type" class="setting-select" style="padding: 8px 10px; font-size: 12px; height: 34px; width: 100%; min-width: 200px;">
+                                        <option value="pure-upscaling">Pure Upscaling</option>
+                                        <option value="super-resolution" selected>Super Resolution</option>
+                                        <option value="face-enhancement">Face Enhancement</option>
+                                    </select>
+                                    <!-- Hidden checkbox for backward compatibility -->
+                                    <input type="checkbox" id="ai-enhancement-toggle" checked style="display: none;">
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Advanced Options -->
+                        <div class="status-section" style="padding: 10px; background: #1a1a1a; border: 1px solid #333333; border-radius: 8px; margin-bottom: 8px;">
+                            <div class="advanced-toggles" style="gap: 8px;">
+                                <div class="toggle-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0;">
+                                    <div>
+                                        <div style="color: #e0e0e0; font-size: 13px; font-weight: 600;">Artifact Removal</div>
+                                        <div style="color: #a0a0a0; font-size: 11px; margin-top: 1px;">Remove JPEG artifacts and compression</div>
+                                    </div>
+                                    <div class="toggle-container" style="width: 36px; height: 18px;">
+                                        <input type="checkbox" id="artifact-removal-toggle" class="setting-toggle">
+                                        <label for="artifact-removal-toggle" class="toggle-slider"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Output Destination -->
+                        <div class="status-section" style="padding: 8px; background: #1a1a1a; border: 1px solid #333333; border-radius: 8px; margin-bottom: 6px;">
+                            <div class="section-title" style="font-size: 12px; margin-bottom: 5px;">OUTPUT DESTINATION</div>
+                            
+                            <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                                <div style="color: #808080; margin-right: 6px;">📁</div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div id="download-display-sub" style="color: #f0f0f0; font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">~/Downloads/ProUpscaler</div>
+                                </div>
+                            </div>
+                            <button id="browse-location" class="location-browse" style="background: #808080; border: none; border-radius: 3px; padding: 5px 8px; color: white; font-size: 11px; font-weight: 500; cursor: pointer; width: 100%;">Change</button>
+                        </div>
+                        <input type="text" id="download-location" value="Downloads/ProUpscaler" style="display: none;">
+                        
+                        <!-- Auto-download Note -->
+                        <div style="color: #a0a0a0; font-size: 11px; font-weight: 600; text-align: center; margin-top: -2px; margin-bottom: 0px; line-height: 1.1;">
+                            Processing auto downloads to the selected folder above
+                        </div>
+
+                    </div>
+                    
+                    <!-- Fixed Action Button -->
+                    <div class="panel-footer">
+                        <button class="process-button" id="start-processing" disabled style="
+                            display: flex;
+                            align-items: center;
+                            gap: 0.625rem;
+                            padding: 0.875rem 1.5rem;
+                            border-radius: 0.625rem;
+                            color: #f0f0f0;
+                            font-size: 0.9375rem;
+                            font-weight: 600;
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                            letter-spacing: 0.03em;
+                            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                            white-space: nowrap;
+                            cursor: pointer;
+                            border: none;
+                            background: linear-gradient(135deg, rgba(128, 128, 128, 0.25), rgba(96, 96, 96, 0.15));
+                            min-width: 130px;
+                            justify-content: center;
+                            position: relative;
+                            overflow: hidden;
+                            box-shadow: 
+                                0 0 0 1px rgba(128, 128, 128, 0.3) inset,
+                                0 4px 16px rgba(128, 128, 128, 0.3),
+                                0 1px 4px rgba(96, 96, 96, 0.2);
+                            transform: translateY(-1px);
+                            width: 100%;
+                        ">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Start Processing</span>
+                        </button>
+                    </div>
+                </aside>
+
+                <!-- Image Comparison Area -->
+                <div class="image-comparison-area">
+                    <!-- Original Image -->
+                    <div class="image-panel original-panel">
+                        <div class="panel-header">
+                            <h4 class="panel-title">Original</h4>
+                            <div class="panel-info" id="original-info">-</div>
+                        </div>
+                        <div class="image-container" id="original-container">
+                            <!-- Upload Area (when no image) -->
+                            <div class="upload-area" id="upload-area">
+                                <input type="file" id="file-input" accept="image/*" class="hidden">
+                                <div class="upload-content">
+                                    <div class="upload-icon">
+                                        <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                        </svg>
+                                    </div>
+                                    <div class="upload-text">
+                                        <h3>Drop image here</h3>
+                                        <p>or click to browse</p>
+                                        <button class="upload-button">Choose Image</button>
+                                    </div>
+                                    <div class="upload-info">
+                                        Supports PNG, JPEG, WebP, TIFF up to 1.5GB
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Image Preview (when image loaded) -->
+                            <div class="image-preview hidden" id="original-preview">
+                                <img id="original-image" alt="Original" class="preview-image">
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- File Settings Card - Compact -->
-                <div class="card compact-card">
-                    <div class="card-header compact-header">
-                        <h3 class="card-title text-xs font-semibold">File Settings</h3>
-                    </div>
-                    <div class="card-content compact-content space-y-2">
-                        <!-- Custom Filename -->
-                        <div class="form-group">
-                            <label class="form-label text-xxs" for="custom-filename">Custom Filename</label>
-                            <input type="text" id="custom-filename" class="input compact-input" 
-                                   placeholder="Leave blank for auto-generated">
-                            <p class="text-xxs text-muted-foreground" style="margin-top: 0.125rem;">
-                                Extension added automatically
-                            </p>
+                    <!-- Enhanced Image -->
+                    <div class="image-panel enhanced-panel">
+                        <div class="panel-header">
+                            <h4 class="panel-title">Enhanced Result</h4>
+                            <div class="panel-info" id="enhanced-info">-</div>
                         </div>
-
-                        <!-- Download Location -->
-                        <div class="form-group">
-                            <label class="form-label text-xxs" for="download-location">Download Location</label>
-                            <div class="flex space-x-1">
-                                <input type="text" id="download-location" class="input compact-input flex-1" 
-                                       value="Downloads/ProUpscaler" readonly>
-                                <button class="btn-secondary compact-btn px-2" id="browse-location" title="Browse for folder">
-                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2V7z"/>
+                        <div class="image-container" id="enhanced-container">
+                            <div class="placeholder-content" id="enhanced-placeholder">
+                                <div class="placeholder-icon">
+                                    <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                                     </svg>
-                                </button>
+                                </div>
+                                <div class="placeholder-text">
+                                    <h3>Enhanced image will appear here</h3>
+                                    <p>Upload an image to begin processing</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Enhanced Image Preview -->
+                            <div class="image-preview hidden" id="enhanced-preview">
+                                <img id="enhanced-image" alt="Enhanced" class="preview-image">
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Action Button -->
-                <div class="action-button-container">
-                    <button class="btn-primary w-full px-6 py-3" id="start-processing" disabled>
-                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                        </svg>
-                        Start Upscaling
-                    </button>
-                </div>
-
+                <!-- Share Options Panel -->
+                <aside class="share-options-panel" id="share-options-panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Share & Export</h3>
+                    </div>
+                    
+                    <div class="panel-content" style="display: flex; flex-direction: column; height: 100%;">
+                        <div style="flex: 0 0 auto;">
+                            <div class="share-actions">
+                                <button class="share-button primary-share" id="download-result" disabled>
+                                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                                    </svg>
+                                    <span>Download</span>
+                                </button>
+                                
+                                <button class="share-button" id="copy-link" disabled>
+                                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                    </svg>
+                                    <span>Copy Link</span>
+                                </button>
+                                
+                                <button class="share-button" id="email-share" disabled>
+                                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                    </svg>
+                                    <span>Email</span>
+                                </button>
+                                
+                                <button class="share-button" id="social-share" disabled>
+                                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"/>
+                                    </svg>
+                                    <span>Share</span>
+                                </button>
+                            </div>
+                            
+                            <div class="export-options" style="margin-top: 8px;">
+                                <div class="section-title">Export Options</div>
+                                <div class="option-group">
+                                    <label class="option-item">
+                                        <input type="radio" name="export-format" value="original" checked>
+                                        <span>Keep Original Format</span>
+                                    </label>
+                                    <label class="option-item">
+                                        <input type="radio" name="export-format" value="png">
+                                        <span>PNG (Lossless)</span>
+                                    </label>
+                                    <label class="option-item">
+                                        <input type="radio" name="export-format" value="jpeg">
+                                        <span>JPEG (Compressed)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Current Image - Pushed to bottom -->
+                        <div class="status-section" style="margin-top: auto; margin-bottom: 0;">
+                            <div class="section-title">Current Image</div>
+                            <div class="file-info" style="background: #1a1a1a; border: 1px solid #333333; border-radius: 6px; padding: 12px; margin-bottom: 0;">
+                                <div class="file-name" id="current-file-name" style="color: #f0f0f0; font-size: 13px; font-weight: 600; margin-bottom: 4px;">No file selected</div>
+                                <div class="file-details" id="current-file-details" style="color: #a0a0a0; font-size: 11px;">Upload an image to begin</div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
             </div>
-        </aside>
+
+            <!-- Canvas Notifications Container -->
+            <div id="canvas-notifications" class="canvas-notifications" aria-live="polite" aria-atomic="true"></div>
+        </main>
+
+
 
         <!-- Footer Pill -->
         <footer class="footer-pill hidden" id="progress-footer">
@@ -397,6 +622,10 @@
     <script src="js/upscaler.js"></script>
     <script src="js/pro-engine-interface.js"></script>
     <script src="js/pro-engine-downloader.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/webgpu-integration-fix.js"></script>
+    <script src="js/stripe-modal.js"></script>
+    <script src="js/payment-manager.js"></script>
+    <script src="js/premium-header.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>

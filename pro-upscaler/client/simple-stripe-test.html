@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Simple Stripe Test</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            justify-content: center;
+            align-content: center;
+            height: 100vh;
+            width: 100vw;
+            background: #0f172a;
+            color: white;
+        }
+
+        form {
+            width: 30vw;
+            min-width: 500px;
+            align-self: center;
+            box-shadow: 0px 0px 20px 0px rgba(59, 130, 246, 0.2);
+            border-radius: 8px;
+            padding: 40px;
+            background: #1e293b;
+        }
+
+        #card-element {
+            border: 1px solid #334155;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 10px 0;
+            background: #0f172a;
+        }
+
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #card-errors {
+            color: #ef4444;
+            margin-top: 10px;
+        }
+
+        .debug {
+            background: #374151;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <form id="payment-form">
+        <h2>Simple Stripe Test</h2>
+        
+        <div class="debug" id="debug-log">Initializing...</div>
+        
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="jenny.rosen@example.com" required />
+
+        <label for="card-element">Credit or debit card</label>
+        <div id="card-element">
+            <!-- Stripe Elements will create form elements here -->
+        </div>
+
+        <!-- Display form errors -->
+        <div id="card-errors" role="alert"></div>
+
+        <button type="submit" id="submit-button">Pay</button>
+    </form>
+
+    <script>
+        const debugLog = document.getElementById('debug-log');
+        
+        function log(message) {
+            console.log(message);
+            debugLog.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+        }
+
+        // Test publishable key (same as in your modal)
+        const stripe = Stripe('pk_test_51RpmSNCg03i5TOI3VHhWoLfIl8LCvqgO5kXUPaHfAhJ8NtTRNGjnILUbM5l8p8rEDpzNrGKmhIYfLM7mZRKu4KYV00kqPcLgdj');
+        log('Stripe instance created');
+
+        const elements = stripe.elements();
+        log('Elements created');
+
+        const cardElement = elements.create('card', {
+            hidePostalCode: true,
+            style: {
+                base: {
+                    fontSize: '16px',
+                    color: '#ffffff',
+                    backgroundColor: 'transparent',
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    fontWeight: '400',
+                    lineHeight: '20px',
+                    '::placeholder': {
+                        color: '#94a3b8',
+                        fontWeight: '400',
+                    },
+                    ':focus': {
+                        color: '#ffffff',
+                    },
+                    ':hover': {
+                        color: '#ffffff',
+                    },
+                },
+                complete: {
+                    color: '#10b981',
+                },
+                empty: {
+                    color: '#ffffff',
+                },
+                invalid: {
+                    color: '#ef4444',
+                },
+            },
+        });
+        log('Card element created');
+
+        cardElement.mount('#card-element');
+        log('Card element mounted');
+
+        cardElement.on('ready', function() {
+            log('✅ Card element is ready for input!');
+        });
+
+        cardElement.on('change', function(event) {
+            const displayError = document.getElementById('card-errors');
+            const cardContainer = document.getElementById('card-element');
+            
+            if (event.error) {
+                displayError.textContent = event.error.message;
+                cardContainer.style.borderColor = '#ef4444';
+                log('❌ Card validation error: ' + event.error.message);
+            } else {
+                displayError.textContent = '';
+                if (event.complete) {
+                    cardContainer.style.borderColor = '#10b981';
+                    log('✅ Card input is complete and valid');
+                } else if (!event.empty) {
+                    cardContainer.style.borderColor = '#3b82f6';
+                    log('🔧 User is typing: ' + (event.brand || 'unknown card'));
+                } else {
+                    cardContainer.style.borderColor = '#334155';
+                    log('💭 Card field is empty');
+                }
+            }
+        });
+
+        // Handle form submission
+        const form = document.getElementById('payment-form');
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            log('Form submitted - this is just a test, no actual payment will be processed');
+        });
+
+        // Log any errors
+        window.addEventListener('error', function(e) {
+            log('❌ JavaScript Error: ' + e.message);
+        });
+    </script>
+</body>
+</html> 

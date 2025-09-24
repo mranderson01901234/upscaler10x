@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Upscaler - User Management</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Enhanced Dark Theme Colors */
+            --bg-primary: #0f0f23;
+            --bg-secondary: #1a1a2e;
+            --bg-tertiary: #16213e;
+            --bg-accent: #0f3460;
+            
+            --surface-primary: #1e1e2e;
+            --surface-secondary: #262637;
+            --surface-tertiary: #2d2d44;
+            --surface-hover: #313244;
+            
+            --border-primary: #3b3b54;
+            --border-secondary: #45455a;
+            --border-accent: #5b5b73;
+            
+            --text-primary: #e6e6e6;
+            --text-secondary: #b3b3b3;
+            --text-muted: #8b8b8b;
+            --text-accent: #ffffff;
+            
+            --accent-blue: #3b82f6;
+            --accent-blue-hover: #2563eb;
+            --accent-green: #10b981;
+            --accent-green-hover: #059669;
+            --accent-purple: #8b5cf6;
+            --accent-purple-hover: #7c3aed;
+            --accent-orange: #f59e0b;
+            --accent-orange-hover: #d97706;
+            --accent-red: #ef4444;
+            --accent-red-hover: #dc2626;
+            
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .admin-container {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            grid-template-rows: auto 1fr;
+            grid-template-areas: 
+                "sidebar header"
+                "sidebar main";
+        }
+
+        /* Sidebar */
+        .sidebar {
+            grid-area: sidebar;
+            background: var(--surface-primary);
+            border-right: 1px solid var(--border-primary);
+            padding: 2rem 1.5rem;
+            position: fixed;
+            height: 100vh;
+            width: 280px;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-primary);
+        }
+
+        .sidebar-logo {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .sidebar-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-accent);
+        }
+
+        .nav-section {
+            margin-bottom: 2rem;
+        }
+
+        .nav-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background: var(--surface-hover);
+            color: var(--text-primary);
+            transform: translateX(4px);
+        }
+
+        .nav-item.active {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Header */
+        .header {
+            grid-area: header;
+            background: var(--surface-primary);
+            border-bottom: 1px solid var(--border-primary);
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-accent);
+        }
+
+        .header-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .action-btn {
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-secondary);
+            color: var(--text-primary);
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .action-btn:hover {
+            background: var(--surface-tertiary);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .action-btn.primary {
+            background: var(--gradient-primary);
+            border-color: transparent;
+            color: white;
+        }
+
+        .action-btn.primary:hover {
+            background: var(--gradient-primary);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Main Content */
+        .main-content {
+            grid-area: main;
+            padding: 2rem;
+            background: var(--bg-secondary);
+            min-height: calc(100vh - 80px);
+        }
+
+        /* Filters */
+        .filters-section {
+            background: var(--surface-primary);
+            border: 1px solid var(--border-primary);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .filters-section.collapsed {
+            padding: 1rem 1.5rem;
+        }
+
+        .filters-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .filters-section.collapsed .filters-header {
+            margin-bottom: 0;
+        }
+
+        .filters-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-accent);
+        }
+
+        .filters-toggle {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .filters-toggle:hover {
+            background: var(--surface-secondary);
+            color: var(--text-primary);
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            opacity: 1;
+            max-height: 200px;
+            transition: all 0.3s ease;
+        }
+
+        .filters-section.collapsed .filters-grid {
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .filter-input {
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-secondary);
+            color: var(--text-primary);
+            padding: 0.75rem;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .search-input {
+            padding-left: 2.5rem;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--surface-primary);
+            border: 1px solid var(--border-primary);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .stat-card.users::before {
+            background: var(--gradient-primary);
+        }
+
+        .stat-card.active::before {
+            background: var(--gradient-success);
+        }
+
+        .stat-card.paid::before {
+            background: var(--gradient-warning);
+        }
+
+        .stat-card.suspended::before {
+            background: var(--gradient-danger);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            border-color: var(--border-accent);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: var(--surface-secondary);
+        }
+
+        .stat-content {
+            flex: 1;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-accent);
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        /* Users Table */
+        .users-table-section {
+            background: var(--surface-primary);
+            border: 1px solid var(--border-primary);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            background: var(--surface-secondary);
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .table-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-accent);
+        }
+
+        .table-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .bulk-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .bulk-actions.show {
+            opacity: 1;
+        }
+
+        .bulk-select {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .users-table {
+            width: 100%;
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: auto 2fr 1fr 1fr 1fr 1fr 1fr auto;
+            gap: 1rem;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-primary);
+            transition: all 0.2s ease;
+        }
+
+        .table-row:hover {
+            background: var(--surface-secondary);
+        }
+
+        .table-row:last-child {
+            border-bottom: none;
+        }
+
+        .table-header-row {
+            background: var(--surface-tertiary);
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .table-header-row:hover {
+            background: var(--surface-tertiary);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-primary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: white;
+        }
+
+        .user-details {
+            flex: 1;
+        }
+
+        .user-email {
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .user-id {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .tier-badge {
+            padding: 0.375rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+            border: 1px solid;
+        }
+
+        .tier-free {
+            background: rgba(107, 114, 128, 0.1);
+            color: rgb(107, 114, 128);
+            border-color: rgba(107, 114, 128, 0.2);
+        }
+
+        .tier-basic {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-blue);
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .tier-pro {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--accent-purple);
+            border-color: rgba(139, 92, 246, 0.2);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-active .status-dot {
+            background: var(--accent-green);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+
+        .status-suspended .status-dot {
+            background: var(--accent-red);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+        }
+
+        .role-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .role-admin {
+            color: var(--accent-orange);
+        }
+
+        .role-user {
+            color: var(--text-muted);
+        }
+
+        .date-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .actions-menu {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-button {
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-secondary);
+            color: var(--text-primary);
+            padding: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+        }
+
+        .action-button:hover {
+            background: var(--surface-tertiary);
+            border-color: var(--border-accent);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .admin-container {
+                grid-template-columns: 1fr;
+                grid-template-areas: 
+                    "header"
+                    "main";
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .table-row {
+                grid-template-columns: auto 1fr auto;
+                gap: 0.75rem;
+            }
+
+            .table-row > *:nth-child(n+4):nth-child(-n+7) {
+                display: none;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">🛡️</div>
+                <div>
+                    <div class="sidebar-title">Pro Upscaler</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Admin Panel</div>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Dashboard</div>
+                <a href="/admin" class="nav-item">
+                    <div class="nav-icon">📊</div>
+                    <span>Overview</span>
+                </a>
+                <a href="/admin-users" class="nav-item active">
+                    <div class="nav-icon">👥</div>
+                    <span>User Management</span>
+                </a>
+                <a href="/admin-analytics" class="nav-item">
+                    <div class="nav-icon">📈</div>
+                    <span>Analytics</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">System</div>
+                <a href="#" class="nav-item">
+                    <div class="nav-icon">🖥️</div>
+                    <span>System Health</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <div class="nav-icon">📋</div>
+                    <span>Audit Logs</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <div class="nav-icon">⚙️</div>
+                    <span>Settings</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Application</div>
+                <a href="/" class="nav-item">
+                    <div class="nav-icon">🏠</div>
+                    <span>Back to App</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <div class="header-title">User Management</div>
+                <div class="header-subtitle">Manage user accounts, subscriptions, and permissions</div>
+            </div>
+            <div class="header-actions">
+                <button id="filtersToggle" class="action-btn">
+                    <span>🔍</span>
+                    <span>Filters</span>
+                </button>
+                <button class="action-btn primary">
+                    <span>➕</span>
+                    <span>Add User</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Filters -->
+            <div id="filtersSection" class="filters-section collapsed">
+                <div class="filters-header">
+                    <div class="filters-title">
+                        <span>🔍</span>
+                        <span>Advanced Filters</span>
+                    </div>
+                    <button id="filtersToggleBtn" class="filters-toggle">
+                        <span id="filtersToggleIcon">▼</span>
+                    </button>
+                </div>
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label class="filter-label">Search Users</label>
+                        <div class="search-container">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="searchInput" class="filter-input search-input" placeholder="Search by email...">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Subscription Tier</label>
+                        <select id="tierFilter" class="filter-input">
+                            <option value="">All Tiers</option>
+                            <option value="free">Free</option>
+                            <option value="basic">Basic</option>
+                            <option value="pro">Pro</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Status</label>
+                        <select id="statusFilter" class="filter-input">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="suspended">Suspended</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Admin Role</label>
+                        <select id="roleFilter" class="filter-input">
+                            <option value="">All Users</option>
+                            <option value="super_admin">Super Admin</option>
+                            <option value="customer_support">Customer Support</option>
+                            <option value="billing_admin">Billing Admin</option>
+                            <option value="technical_admin">Technical Admin</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Statistics -->
+            <div class="stats-grid">
+                <div class="stat-card users">
+                    <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: var(--accent-blue);">👥</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="totalUsersCount">1,247</div>
+                        <div class="stat-label">Total Users</div>
+                    </div>
+                </div>
+                <div class="stat-card active">
+                    <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green);">✅</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="activeUsersCount">892</div>
+                        <div class="stat-label">Active Users</div>
+                    </div>
+                </div>
+                <div class="stat-card paid">
+                    <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-purple);">👑</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="paidUsersCount">355</div>
+                        <div class="stat-label">Paid Users</div>
+                    </div>
+                </div>
+                <div class="stat-card suspended">
+                    <div class="stat-icon" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red);">🚫</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="suspendedUsersCount">12</div>
+                        <div class="stat-label">Suspended</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Table -->
+            <div class="users-table-section">
+                <div class="table-header">
+                    <div class="table-title">
+                        <span>👥</span>
+                        <span>User Accounts</span>
+                        <span style="font-size: 0.875rem; color: var(--text-muted); font-weight: 400;">(<span id="filteredCount">5</span> users)</span>
+                    </div>
+                    <div class="table-controls">
+                        <div id="bulkActions" class="bulk-actions">
+                            <span class="bulk-select"><span id="selectedCount">0</span> selected</span>
+                            <button class="action-btn">Suspend</button>
+                            <button class="action-btn">Export</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="users-table">
+                    <div class="table-row table-header-row">
+                        <input type="checkbox" id="selectAllUsers">
+                        <div>User</div>
+                        <div>Subscription</div>
+                        <div>Status</div>
+                        <div>Role</div>
+                        <div>Joined</div>
+                        <div>Last Seen</div>
+                        <div>Actions</div>
+                    </div>
+                    <div id="usersTableBody">
+                        <!-- Users will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class UserManagement {
+            constructor() {
+                this.users = [];
+                this.filteredUsers = [];
+                this.selectedUsers = new Set();
+                this.filters = {
+                    search: '',
+                    tier: '',
+                    status: '',
+                    role: ''
+                };
+                this.filtersVisible = false;
+                this.init();
+            }
+
+            init() {
+                this.loadUsers();
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                // Filters toggle
+                document.getElementById('filtersToggle').addEventListener('click', () => {
+                    this.toggleFilters();
+                });
+                document.getElementById('filtersToggleBtn').addEventListener('click', () => {
+                    this.toggleFilters();
+                });
+
+                // Filter inputs
+                document.getElementById('searchInput').addEventListener('input', (e) => {
+                    this.filters.search = e.target.value;
+                    this.applyFilters();
+                });
+
+                document.getElementById('tierFilter').addEventListener('change', (e) => {
+                    this.filters.tier = e.target.value;
+                    this.applyFilters();
+                });
+
+                document.getElementById('statusFilter').addEventListener('change', (e) => {
+                    this.filters.status = e.target.value;
+                    this.applyFilters();
+                });
+
+                document.getElementById('roleFilter').addEventListener('change', (e) => {
+                    this.filters.role = e.target.value;
+                    this.applyFilters();
+                });
+
+                // Select all checkbox
+                document.getElementById('selectAllUsers').addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        this.filteredUsers.forEach(user => this.selectedUsers.add(user.id));
+                    } else {
+                        this.selectedUsers.clear();
+                    }
+                    this.renderUsers();
+                    this.updateBulkActions();
+                });
+            }
+
+            toggleFilters() {
+                this.filtersVisible = !this.filtersVisible;
+                const filtersSection = document.getElementById('filtersSection');
+                const toggleIcon = document.getElementById('filtersToggleIcon');
+                
+                if (this.filtersVisible) {
+                    filtersSection.classList.remove('collapsed');
+                    toggleIcon.textContent = '▲';
+                } else {
+                    filtersSection.classList.add('collapsed');
+                    toggleIcon.textContent = '▼';
+                }
+            }
+
+            async loadUsers() {
+                // Mock user data - in real implementation, this would come from admin API
+                this.users = [
+                    {
+                        id: '1',
+                        email: 'john.doe@example.com',
+                        subscription_tier: 'pro',
+                        subscription_status: 'active',
+                        admin_role: null,
+                        created_at: '2025-08-15T10:30:00Z',
+                        last_sign_in_at: '2025-09-24T14:22:00Z',
+                        stripe_customer_id: 'cus_123456'
+                    },
+                    {
+                        id: '2',
+                        email: 'jane.smith@example.com',
+                        subscription_tier: 'basic',
+                        subscription_status: 'active',
+                        admin_role: null,
+                        created_at: '2025-09-01T09:15:00Z',
+                        last_sign_in_at: '2025-09-23T16:45:00Z',
+                        stripe_customer_id: 'cus_789012'
+                    },
+                    {
+                        id: '3',
+                        email: 'admin@proupscaler.com',
+                        subscription_tier: 'free',
+                        subscription_status: 'active',
+                        admin_role: 'super_admin',
+                        created_at: '2025-07-01T12:00:00Z',
+                        last_sign_in_at: '2025-09-24T18:30:00Z'
+                    },
+                    {
+                        id: '4',
+                        email: 'suspended.user@example.com',
+                        subscription_tier: 'basic',
+                        subscription_status: 'suspended',
+                        admin_role: null,
+                        created_at: '2025-08-20T14:22:00Z',
+                        last_sign_in_at: '2025-09-20T11:15:00Z',
+                        stripe_customer_id: 'cus_345678'
+                    },
+                    {
+                        id: '5',
+                        email: 'support@proupscaler.com',
+                        subscription_tier: 'free',
+                        subscription_status: 'active',
+                        admin_role: 'customer_support',
+                        created_at: '2025-07-15T08:00:00Z',
+                        last_sign_in_at: '2025-09-24T17:15:00Z'
+                    }
+                ];
+
+                this.applyFilters();
+                this.updateStats();
+            }
+
+            applyFilters() {
+                this.filteredUsers = this.users.filter(user => {
+                    const matchesSearch = !this.filters.search || 
+                        user.email.toLowerCase().includes(this.filters.search.toLowerCase());
+                    const matchesTier = !this.filters.tier || user.subscription_tier === this.filters.tier;
+                    const matchesStatus = !this.filters.status || user.subscription_status === this.filters.status;
+                    const matchesRole = !this.filters.role || user.admin_role === this.filters.role;
+
+                    return matchesSearch && matchesTier && matchesStatus && matchesRole;
+                });
+
+                document.getElementById('filteredCount').textContent = this.filteredUsers.length;
+                this.renderUsers();
+                this.updateBulkActions();
+            }
+
+            renderUsers() {
+                const tbody = document.getElementById('usersTableBody');
+                tbody.innerHTML = this.filteredUsers.map(user => this.renderUserRow(user)).join('');
+            }
+
+            renderUserRow(user) {
+                const isSelected = this.selectedUsers.has(user.id);
+                return `
+                    <div class="table-row">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''} 
+                               onchange="userManagement.toggleUserSelection('${user.id}')">
+                        <div class="user-info">
+                            <div class="user-avatar">${user.email.charAt(0).toUpperCase()}</div>
+                            <div class="user-details">
+                                <div class="user-email">${user.email}</div>
+                                <div class="user-id">ID: ${user.id}</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="tier-badge tier-${user.subscription_tier}">${user.subscription_tier}</span>
+                            ${user.stripe_customer_id ? '<span style="color: var(--accent-green); font-size: 0.875rem;">💰</span>' : ''}
+                        </div>
+                        <div class="status-indicator status-${user.subscription_status}">
+                            <div class="status-dot"></div>
+                            <span style="text-transform: capitalize;">${user.subscription_status}</span>
+                        </div>
+                        <div class="role-badge ${user.admin_role ? 'role-admin' : 'role-user'}">
+                            ${user.admin_role ? 
+                                `<span>👑</span><span style="text-transform: capitalize;">${user.admin_role.replace('_', ' ')}</span>` : 
+                                '<span>👤</span><span>User</span>'
+                            }
+                        </div>
+                        <div class="date-info">
+                            <span>📅</span>
+                            <span>${this.formatDate(user.created_at)}</span>
+                        </div>
+                        <div class="date-info">
+                            <span>⚡</span>
+                            <span>${this.formatLastSeen(user.last_sign_in_at)}</span>
+                        </div>
+                        <div class="actions-menu">
+                            <button class="action-button" onclick="userManagement.editUser('${user.id}')" title="Edit User">✏️</button>
+                            <button class="action-button" onclick="userManagement.showUserActions('${user.id}')" title="More Actions">⋮</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            formatDate(dateString) {
+                return new Date(dateString).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            }
+
+            formatLastSeen(dateString) {
+                if (!dateString) return 'Never';
+                
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+                
+                if (diffInHours < 1) return 'Just now';
+                if (diffInHours < 24) return `${diffInHours}h ago`;
+                if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
+                return this.formatDate(dateString);
+            }
+
+            updateStats() {
+                const totalUsers = this.users.length;
+                const activeUsers = this.users.filter(u => u.subscription_status === 'active').length;
+                const paidUsers = this.users.filter(u => u.subscription_tier !== 'free').length;
+                const suspendedUsers = this.users.filter(u => u.subscription_status === 'suspended').length;
+
+                document.getElementById('totalUsersCount').textContent = totalUsers;
+                document.getElementById('activeUsersCount').textContent = activeUsers;
+                document.getElementById('paidUsersCount').textContent = paidUsers;
+                document.getElementById('suspendedUsersCount').textContent = suspendedUsers;
+            }
+
+            toggleUserSelection(userId) {
+                if (this.selectedUsers.has(userId)) {
+                    this.selectedUsers.delete(userId);
+                } else {
+                    this.selectedUsers.add(userId);
+                }
+                this.renderUsers();
+                this.updateBulkActions();
+            }
+
+            updateBulkActions() {
+                const bulkActions = document.getElementById('bulkActions');
+                const selectedCount = document.getElementById('selectedCount');
+                
+                selectedCount.textContent = this.selectedUsers.size;
+                
+                if (this.selectedUsers.size > 0) {
+                    bulkActions.classList.add('show');
+                } else {
+                    bulkActions.classList.remove('show');
+                }
+            }
+
+            editUser(userId) {
+                const user = this.users.find(u => u.id === userId);
+                if (user) {
+                    alert(`Edit user: ${user.email}\n(This would open an edit modal in the real implementation)`);
+                }
+            }
+
+            showUserActions(userId) {
+                const user = this.users.find(u => u.id === userId);
+                if (user) {
+                    const actions = [
+                        'Edit User',
+                        user.subscription_status === 'suspended' ? 'Unsuspend' : 'Suspend',
+                        'Change Subscription',
+                        'View Details',
+                        'Delete User'
+                    ];
+                    
+                    const action = prompt(`User Actions for ${user.email}:\n${actions.map((a, i) => `${i+1}. ${a}`).join('\n')}\n\nEnter action number (1-${actions.length}):`);
+                    
+                    if (action && action >= 1 && action <= actions.length) {
+                        alert(`Would execute: ${actions[action-1]} for ${user.email}`);
+                    }
+                }
+            }
+        }
+
+        // Initialize user management when page loads
+        let userManagement;
+        document.addEventListener('DOMContentLoaded', () => {
+            userManagement = new UserManagement();
+        });
+    </script>
+</body>
+</html> 

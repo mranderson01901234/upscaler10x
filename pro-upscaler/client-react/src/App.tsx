@@ -1,8 +1,15 @@
 import React, { useState, useCallback } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HeaderPill } from './components/layout/header-pill';
 import { FooterPill } from './components/layout/footer-pill';
 import { Sidebar } from './components/layout/sidebar';
 import { MainContent } from './components/layout/main-content';
+import { DashboardLayout } from './components/layout/dashboard-layout';
+import { Dashboard } from './pages/Dashboard';
+import { ProcessingHistory } from './pages/ProcessingHistory';
+import { Account } from './pages/Account';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { UserManagement } from './pages/UserManagement';
 import './globals.css';
 
 interface AppState {
@@ -32,7 +39,8 @@ interface AppState {
   };
 }
 
-function App() {
+// Main Upscaler Component (existing functionality)
+function MainUpscaler() {
   const [state, setState] = useState<AppState>({
     currentImage: null,
     previewUrl: null,
@@ -236,6 +244,51 @@ function App() {
         disabled={!state.currentImage}
       />
     </div>
+  );
+}
+
+// Dashboard Router Component
+function DashboardRouter() {
+  const [currentView, setCurrentView] = useState<'overview' | 'history' | 'account'>('overview');
+
+  const renderContent = () => {
+    switch (currentView) {
+      case 'overview':
+        return <Dashboard />;
+      case 'history':
+        return <ProcessingHistory />;
+      case 'account':
+        return <Account />;
+      default:
+        return <Dashboard />;
+    }
+  };
+
+  return (
+    <DashboardLayout currentView={currentView} onViewChange={setCurrentView}>
+      {renderContent()}
+    </DashboardLayout>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        {/* Main upscaler interface */}
+        <Route path="/" element={<MainUpscaler />} />
+        
+        {/* Dashboard routes */}
+        <Route path="/dashboard/*" element={<DashboardRouter />} />
+        
+        {/* Admin routes */}
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/users" element={<UserManagement />} />
+        
+        {/* Redirect unknown routes to main */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }
 

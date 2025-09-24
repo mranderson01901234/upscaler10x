@@ -66,6 +66,9 @@ export class UltraFastIntegrationSystem {
     // Update any progress indicators in the UI
     const progressBar = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
+    const progressPercentage = document.getElementById('progress-percentage');
+    const progressTitle = document.getElementById('progress-title');
+    const progressDescription = document.getElementById('progress-description');
     
     if (progressBar) {
       progressBar.style.width = `${progress}%`;
@@ -73,6 +76,21 @@ export class UltraFastIntegrationSystem {
     
     if (progressText) {
       progressText.textContent = message;
+    }
+    
+    // Update the main progress display elements
+    if (progressPercentage) {
+      progressPercentage.textContent = `${Math.round(progress)}%`;
+    }
+    
+    if (progressTitle && progress < 100) {
+      progressTitle.textContent = 'Processing...';
+    } else if (progressTitle && progress >= 100) {
+      progressTitle.textContent = 'Complete!';
+    }
+    
+    if (progressDescription) {
+      progressDescription.textContent = message || '';
     }
   }
 

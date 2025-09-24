@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Upscaler - Premium Header</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="premium-header.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-background text-foreground antialiased">
+    
+    <!-- Premium Header -->
+    <header class="premium-header" id="premium-header">
+        <div class="header-container">
+            
+            <!-- Left Section: Brand & Navigation -->
+            <div class="brand-navigation-area">
+                <!-- Brand Section -->
+                <div class="brand-section" id="brand-section">
+                    <div class="brand-logo">
+                        <div class="logo-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#3b82f6"/>
+                                        <stop offset="100%" style="stop-color:#8b5cf6"/>
+                                    </linearGradient>
+                                </defs>
+                                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="url(#logoGradient)" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="M2 17L12 22L22 17" stroke="url(#logoGradient)" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="M2 12L12 17L22 12" stroke="url(#logoGradient)" stroke-width="2" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <div class="brand-text">
+                            <h1 class="app-title">Pro Upscaler</h1>
+                            <span class="version-indicator">v2.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contextual Navigation -->
+                <nav class="contextual-navigation" id="contextual-navigation">
+                    <div class="nav-items" id="nav-items">
+                        <!-- Dynamic navigation items will be inserted here -->
+                    </div>
+                </nav>
+            </div>
+
+            <!-- Center Section: Status & Context Info -->
+            <div class="center-context-area" id="center-context-area">
+                <!-- Processing Status -->
+                <div class="status-section" id="processing-status" style="display: none;">
+                    <div class="status-indicator processing">
+                        <div class="status-icon">
+                            <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" opacity="0.3"/>
+                                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <span class="status-text">Processing...</span>
+                    </div>
+                </div>
+
+                <!-- Pro Engine Status -->
+                <div class="engine-status-section" id="engine-status-section">
+                    <div class="status-indicator" id="pro-engine-status">
+                        <div class="status-dot checking" id="engine-status-dot"></div>
+                        <span class="status-text" id="engine-status-text">Checking Pro Engine...</span>
+                    </div>
+                </div>
+
+                <!-- Contextual Info (breadcrumbs, current operation, etc.) -->
+                <div class="contextual-info" id="contextual-info">
+                    <!-- Dynamic contextual information will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Right Section: User Area & Actions -->
+            <div class="user-actions-area">
+                
+                <!-- Quick Actions (Upload/Download) -->
+                <div class="quick-actions" id="quick-actions">
+                    <button class="action-btn upload-btn" id="header-upload-btn" title="Upload Image">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 4v16m8-8H4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <input type="file" id="header-file-input" accept="image/*" class="hidden">
+                    
+                    <button class="action-btn download-btn" id="header-download-btn" title="Download" disabled>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 8v8m0 0l-3-3m3 3l3-3M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- User Account Area -->
+                <div class="user-account-area" id="user-account-area">
+                    
+                    <!-- Signed Out State -->
+                    <div class="auth-buttons" id="signed-out-state">
+                        <button class="auth-btn secondary" id="signin-button">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4m-5-4l4-4-4-4m4 4H3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Sign In</span>
+                        </button>
+                        <button class="auth-btn primary" id="signup-button">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2m7-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 2v6m3-3h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Get Started</span>
+                        </button>
+                    </div>
+
+                    <!-- Signed In State -->
+                    <div class="user-profile-area hidden" id="signed-in-state">
+                        
+                        <!-- Subscription Status -->
+                        <div class="subscription-badge" id="subscription-badge">
+                            <span class="tier-badge" id="user-tier">Free</span>
+                        </div>
+
+                        <!-- Notifications Bell -->
+                        <div class="notifications-area" id="notifications-area">
+                            <button class="notification-btn" id="notification-btn" title="Notifications">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span class="notification-dot hidden" id="notification-dot"></span>
+                            </button>
+                        </div>
+
+                        <!-- User Profile Dropdown -->
+                        <div class="user-profile-dropdown" id="user-profile-dropdown">
+                            <button class="profile-trigger" id="profile-trigger">
+                                <div class="user-avatar" id="user-avatar">
+                                    <span class="avatar-text" id="avatar-text">U</span>
+                                </div>
+                                <div class="user-info" id="user-info">
+                                    <span class="user-email" id="user-email">user@example.com</span>
+                                </div>
+                                <svg class="dropdown-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div class="dropdown-menu hidden" id="user-dropdown-menu">
+                                <div class="dropdown-header">
+                                    <div class="dropdown-user-info">
+                                        <span class="dropdown-email" id="dropdown-user-email">user@example.com</span>
+                                        <span class="dropdown-tier" id="dropdown-user-tier">Free Plan</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="dropdown-divider"></div>
+                                
+                                <div class="dropdown-items">
+                                    <a href="dashboard.html" class="dropdown-item">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                                            <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                                            <rect x="14" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                                            <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                                        </svg>
+                                        <span>Dashboard</span>
+                                    </a>
+                                    
+                                    <a href="#" class="dropdown-item" id="view-usage">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+                                            <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                        <span>Usage & Billing</span>
+                                    </a>
+                                    
+                                    <a href="#" class="dropdown-item" id="manage-subscription">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                                            <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                        <span>Subscription</span>
+                                    </a>
+                                    
+                                    <div class="dropdown-divider"></div>
+                                    
+                                    <a href="#" class="dropdown-item" id="account-settings">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                        <span>Account Settings</span>
+                                    </a>
+                                    
+                                    <a href="#" class="dropdown-item text-red-400" id="signout-button">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14l4-4-4-4m4 4H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                        <span>Sign Out</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Overlay -->
+        <div class="mobile-menu-overlay hidden" id="mobile-menu-overlay">
+            <div class="mobile-menu">
+                <div class="mobile-menu-header">
+                    <div class="mobile-brand">
+                        <div class="logo-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="url(#logoGradient)" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="M2 17L12 22L22 17" stroke="url(#logoGradient)" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="M2 12L12 17L22 12" stroke="url(#logoGradient)" stroke-width="2" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <span class="mobile-app-title">Pro Upscaler</span>
+                    </div>
+                    <button class="mobile-menu-close" id="mobile-menu-close">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+                            <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="mobile-menu-content" id="mobile-menu-content">
+                    <!-- Mobile navigation items will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Button -->
+        <button class="mobile-menu-button" id="mobile-menu-button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2"/>
+                <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2"/>
+                <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2"/>
+            </svg>
+        </button>
+    </header>
+
+    <script src="js/premium-header.js"></script>
+</body>
+</html> 

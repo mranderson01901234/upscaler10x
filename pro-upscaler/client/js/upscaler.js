@@ -69,6 +69,11 @@ class UltraFastUpscaler {
     if (result.isVirtual) {
       console.log(`⚡ Virtual result: ${result.dimensions.width}×${result.dimensions.height} - using smart preview`);
       
+      // Create dataUrl from display canvas for UI display
+      const mimeType = this.getMimeType(format);
+      const qualityValue = format === 'png' ? undefined : quality / 100;
+      const dataUrl = result.displayCanvas.toDataURL(mimeType, qualityValue);
+      
       // Return chunked-style result for compatibility with existing code
       return {
         chunkedData: {
@@ -81,19 +86,25 @@ class UltraFastUpscaler {
         height: result.dimensions.height,
         format,
         isChunked: true,
-        canvas: result.displayCanvas, // Smart preview canvas
+        canvas: result.displayCanvas, // Smart preview canvas for display
+        dataUrl: dataUrl, // Preview dataUrl for UI display
+        fullResolutionCanvas: result.fullResolutionCanvas, // Full-resolution virtual canvas
+        isVirtual: true, // Flag to indicate this is a virtual result
         processingTime: result.processingTime
       };
     }
     
     // Handle direct results (smaller images) - SAFE CANVAS CREATION
-    console.log(`✅ Direct result: ${result.dimensions.width}×${result.dimensions.height} - full canvas`);
-    const canvas = result.displayCanvas;
+    const resultWidth = result.dimensions?.width || result.width;
+    const resultHeight = result.dimensions?.height || result.height;
+    const resultCanvas = result.displayCanvas || result.canvas;
+    
+    console.log(`✅ Direct result: ${resultWidth}×${resultHeight} - full canvas`);
     const mimeType = this.getMimeType(format);
     const qualityValue = format === 'png' ? undefined : quality / 100;
     
     const blob = await new Promise(resolve => {
-      canvas.toBlob(resolve, mimeType, qualityValue);
+      resultCanvas.toBlob(resolve, mimeType, qualityValue);
     });
     
     const dataUrl = await new Promise(resolve => {
@@ -107,9 +118,12 @@ class UltraFastUpscaler {
       blob,
       size: blob.size,
       format,
-      width: result.dimensions.width,
-      height: result.dimensions.height,
-      canvas: result.displayCanvas,
+      width: resultWidth,
+      height: resultHeight,
+      canvas: resultCanvas,
+      actualUpscaledResult: result.actualUpscaledResult,
+      targetWidth: result.targetWidth,
+      targetHeight: result.targetHeight,
       processingTime: result.processingTime
     };
   }

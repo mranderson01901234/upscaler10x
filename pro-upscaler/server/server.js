@@ -4,6 +4,9 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Database = require('./database');
+const SupabaseAuthMiddleware = require('./supabase-auth-middleware');
+const PaymentRoutes = require('./payment-routes');
+const AdminRoutes = require('./admin-routes');
 const fs = require('fs');
 const { SubscriptionVerifier } = require('./subscription-verifier');
 
@@ -14,7 +17,16 @@ class ProUpscalerServer {
         this.sessions = new Map();
         this.jwtSecret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
         
-        // Initialize database
+        // Initialize Supabase authentication (primary)
+        this.authMiddleware = new SupabaseAuthMiddleware();
+        
+        // Initialize payment routes
+        this.paymentRoutes = new PaymentRoutes(this.authMiddleware);
+        
+        // Initialize admin routes
+        this.adminRoutes = new AdminRoutes();
+        
+        // Keep SQLite database for local cache only
         this.db = new Database();
         
         this.setupMiddleware();
@@ -37,20 +49,10 @@ class ProUpscalerServer {
         });
     }
     
-    // JWT Authentication Middleware
+    // Legacy JWT Authentication Middleware (deprecated - use Supabase)
     authenticateToken(req, res, next) {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
-
-        if (!token) {
-            return res.status(401).json({ message: 'Access token required' });
-        }
-
-        jwt.verify(token, this.jwtSecret, (err, user) => {
-            if (err) return res.status(403).json({ message: 'Invalid token' });
-            req.user = user;
-            next();
-        });
+        // Redirect to Supabase authentication
+        return this.authMiddleware.authenticateToken(req, res, next);
     }
 
     setupRoutes() {
@@ -58,8 +60,66 @@ class ProUpscalerServer {
             res.json({ status: 'healthy', timestamp: Date.now() });
         });
 
-        // Authentication routes
+        // Authentication routes (DEPRECATED - use Supabase client-side)
+        // Keep for backward compatibility but redirect to Supabase
         this.app.post('/auth/signup', async (req, res) => {
+            res.status(410).json({ 
+                message: 'Authentication moved to Supabase',
+                redirect: 'Use Supabase client-side authentication'
+            });
+        });
+        
+        this.app.post('/auth/signin', async (req, res) => {
+            res.status(410).json({ 
+                message: 'Authentication moved to Supabase',
+                redirect: 'Use Supabase client-side authentication'  
+            });
+        });
+
+        // User profile and usage stats (Supabase-powered)
+        this.app.get('/api/user/profile', this.authMiddleware.authenticateToken, async (req, res) => {
+            try {
+                const userId = req.user.id;
+                const stats = await this.authMiddleware.getUserUsageStats(userId);
+                
+                if (!stats) {
+                    return res.status(404).json({ message: 'User profile not found' });
+                }
+                
+                res.json({
+                    user: {
+                        id: userId,
+                        email: req.user.email,
+                        ...stats
+                    }
+                });
+            } catch (error) {
+                console.error('Profile endpoint error:', error);
+                res.status(500).json({ message: 'Failed to fetch profile' });
+            }
+        });
+
+        // Mount payment routes
+        this.app.use('/api/payments', this.paymentRoutes.getRouter());
+        
+        // Mount admin routes
+        this.app.use('/api/admin', this.adminRoutes.getRouter());
+
+        // Admin interface routes (serve HTML pages)
+        this.app.get('/admin', (req, res) => {
+            res.sendFile(path.join(__dirname, '../client/admin.html'));
+        });
+
+        this.app.get('/admin-users', (req, res) => {
+            res.sendFile(path.join(__dirname, '../client/admin-users.html'));
+        });
+
+        this.app.get('/admin-analytics', (req, res) => {
+            res.sendFile(path.join(__dirname, '../client/admin-analytics.html'));
+        });
+
+        // Legacy authentication route (remove old SQLite-based auth)
+        this.app.post('/auth/signup-old', async (req, res) => {
             try {
                 const { email, password } = req.body;
 
@@ -233,32 +293,58 @@ class ProUpscalerServer {
         
         this.app.post('/api/process', async (req, res) => {
             try {
+                console.log('🔍 Image Processing request received on Pro Upscaler Server - forwarding to WebGPU Desktop Service');
                 const { imageData, scaleFactor, format, quality } = req.body;
                 
                 if (!imageData || !scaleFactor) {
                     return res.status(400).json({ error: 'Missing required parameters' });
                 }
                 
+                // Generate session ID for Desktop Service
                 const sessionId = Date.now().toString();
-                const session = {
-                    id: sessionId,
-                    status: 'processing',
-                    startTime: Date.now(),
-                    config: { scaleFactor, format, quality }
-                };
                 
-                this.sessions.set(sessionId, session);
+                // Forward the request to the WebGPU-accelerated Desktop Service (port 3007)
+                const fetch = (await import('node-fetch')).default;
+                const response = await fetch('http://localhost:3007/api/process-large', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': req.headers.authorization || ''
+                    },
+                    body: JSON.stringify({
+                        sessionId,
+                        imageData,
+                        scaleFactor,
+                        format: format || 'jpeg',
+                        quality: quality || 95,
+                        customFilename: null,
+                        customLocation: null
+                    })
+                });
                 
-                setTimeout(() => {
-                    session.status = 'complete';
-                    session.endTime = Date.now();
-                }, 2000);
+                const result = await response.json();
                 
-                res.json({ sessionId, status: 'started' });
+                // Store session for progress tracking
+                if (result.sessionId) {
+                    const session = {
+                        id: result.sessionId,
+                        status: 'processing',
+                        startTime: Date.now(),
+                        config: { scaleFactor, format, quality },
+                        webgpuEnabled: true
+                    };
+                    this.sessions.set(result.sessionId, session);
+                }
+                
+                res.status(response.status).json(result);
                 
             } catch (error) {
-                console.error('Processing error:', error);
-                res.status(500).json({ error: 'Processing failed' });
+                console.error('❌ Image Processing forwarding error:', error);
+                res.status(500).json({ 
+                    error: 'Image processing failed',
+                    details: error.message,
+                    suggestion: 'Make sure WebGPU Desktop Service is running on port 3007'
+                });
             }
         });
 
@@ -267,9 +353,9 @@ class ProUpscalerServer {
             try {
                 console.log('🔍 AI Processing request received on Pro Upscaler Server - forwarding to Desktop Service');
                 
-                // Forward the request to the Desktop Service (port 3006)
+                // Forward the request to the Desktop Service (port 3007)
                 const fetch = (await import('node-fetch')).default;
-                const response = await fetch('http://localhost:3006/api/process-with-ai', {
+                const response = await fetch('http://localhost:3007/api/process-with-ai', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -286,7 +372,7 @@ class ProUpscalerServer {
                 res.status(500).json({ 
                     error: 'AI processing failed',
                     details: error.message,
-                    suggestion: 'Make sure Desktop Service is running on port 3006'
+                    suggestion: 'Make sure Desktop Service is running on port 3007'
                 });
             }
         });
@@ -307,7 +393,7 @@ class ProUpscalerServer {
                 
                 // Use HTTP request instead of EventSource for forwarding
                 const fetch = (await import('node-fetch')).default;
-                const desktopUrl = `http://localhost:3006/api/progress/${req.params.sessionId}`;
+                const desktopUrl = `http://localhost:3007/api/progress/${req.params.sessionId}`;
                 
                 console.log(`🔗 Connecting to Desktop Service: ${desktopUrl}`);
                 
@@ -363,7 +449,7 @@ class ProUpscalerServer {
         this.app.get('/api/enhanced-preview/:sessionId', async (req, res) => {
             try {
                 const fetch = (await import('node-fetch')).default;
-                const response = await fetch(`http://localhost:3006/api/enhanced-preview/${req.params.sessionId}`);
+                const response = await fetch(`http://localhost:3007/api/enhanced-preview/${req.params.sessionId}`);
                 
                 if (!response.ok) {
                     return res.status(response.status).json({ error: 'Preview not available' });

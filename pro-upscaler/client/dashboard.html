@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Upscaler Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <!-- Dashboard Service -->
+    <script src="js/dashboard-service.js"></script>
+    <style>
+        /* Dashboard-specific styles */
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+            background: #0a0a0b;
+            flex-direction: column;
+        }
+
+        .dashboard-main {
+            display: flex;
+            flex: 1;
+        }
+
+        .dashboard-sidebar {
+            width: 280px;
+            background: #141518;
+            border-right: 1px solid #2d3748;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        .dashboard-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            background: #0a0a0b;
+            margin-left: 280px; /* Account for fixed sidebar width */
+        }
+
+
+
+        /* Premium Upgrade Button Hover Effects */
+        #upgrade-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 8px 24px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(59, 130, 246, 0.3) !important;
+            background: linear-gradient(135deg, #2563eb, #7c3aed) !important;
+        }
+
+        #upgrade-btn:active {
+            transform: translateY(0px);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.2), 0 1px 4px rgba(59, 130, 246, 0.2) !important;
+        }
+
+        /* Dashboard Footer - Hidden */
+        .dashboard-footer {
+            display: none;
+        }
+
+        .dashboard-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            color: #94a3b8;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: #1e293b;
+            color: #f8fafc;
+            border-color: #374151;
+        }
+
+        .nav-item.active {
+            background: #3b82f6;
+            color: #ffffff;
+            border-color: #2563eb;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: #1e293b;
+            border: 1px solid #374151;
+            border-radius: 10px;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-description {
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #374151;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.3s ease;
+            box-shadow: 0 1px 3px rgba(59, 130, 246, 0.4);
+        }
+
+        .recent-activity {
+            background: #1e293b;
+            border: 1px solid #374151;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid #374151;
+            transition: all 0.2s ease;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-item:hover {
+            background: rgba(59, 130, 246, 0.05);
+            border-radius: 8px;
+            margin: 0 -0.5rem;
+            padding: 1rem 0.5rem;
+        }
+
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .activity-thumbnail {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .activity-icon-fallback {
+            width: 20px;
+            height: 20px;
+        }
+
+        .activity-details {
+            flex: 1;
+        }
+
+        .activity-name {
+            font-weight: 500;
+            color: #f8fafc;
+            margin-bottom: 0.25rem;
+        }
+
+        .activity-meta {
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        .activity-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-completed { background: #10b981; }
+        .status-processing { background: #f59e0b; }
+        .status-failed { background: #ef4444; }
+
+        .upgrade-banner {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(147, 51, 234, 0.15));
+            border: 1px solid #3b82f6;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2);
+        }
+
+        .upgrade-content h3 {
+            color: #f8fafc;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .upgrade-content p {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: 1px solid #2563eb;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+        }
+
+        .dashboard-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .dashboard-header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 0.25rem;
+        }
+
+        .dashboard-header p {
+            color: #94a3b8;
+        }
+
+        /* Additional styling improvements */
+        .dashboard-view h2 {
+            color: #f8fafc;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        /* Quick stats styling in sidebar */
+        .dashboard-sidebar h3 {
+            color: #f8fafc;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .dashboard-sidebar .logo-section .app-name {
+            color: #f8fafc;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .dashboard-sidebar .logo-section .version-tag {
+            color: #94a3b8;
+            font-size: 0.75rem;
+        }
+
+        /* Premium Back to Editor Button - Top Right */
+        .premium-back-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: #3b82f6;
+            border: 1px solid #2563eb;
+            border-radius: 8px;
+            color: white;
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .premium-back-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            color: white;
+        }
+
+        .premium-back-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Hide old back button */
+        .back-to-editor-btn {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-main {
+                flex-direction: column;
+            }
+            
+            .dashboard-sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+                padding: 1rem;
+                border-right: none;
+                border-bottom: 1px solid #2d3748;
+                z-index: 5;
+            }
+
+            .dashboard-content {
+                margin-left: 0;
+                padding: 1rem;
+            }
+            
+            .dashboard-nav {
+                flex-direction: row;
+                overflow-x: auto;
+                gap: 0.25rem;
+            }
+            
+            .nav-item {
+                white-space: nowrap;
+                min-width: fit-content;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+
+
+            .premium-back-btn {
+                top: 10px;
+                right: 10px;
+                padding: 0.5rem 1rem;
+                font-size: 0.8rem;
+            }
+
+            /* Mobile responsive analytics */
+            .recent-activity div[style*="grid-template-columns: 1fr 1fr"] {
+                grid-template-columns: 1fr !important;
+            }
+
+            .recent-activity div[style*="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr))"] {
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background text-foreground antialiased">
+    <div class="dashboard-container">
+        <!-- Main Dashboard Area -->
+        <div class="dashboard-main">
+            <!-- Sidebar -->
+            <div class="dashboard-sidebar">
+            <div class="logo-section" style="margin-bottom: 2rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="logo-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="app-name">Pro Upscaler</div>
+                        <div class="version-tag">Dashboard</div>
+                    </div>
+                </div>
+                
+                <!-- Back to Editor Button - Now moved to top right -->
+            </div>
+
+            <!-- Navigation -->
+            <nav class="dashboard-nav">
+                <div class="nav-item active" data-view="overview">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    <span>Overview</span>
+                </div>
+                <div class="nav-item" data-view="history">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v5h5M21 21v-5h-5"/>
+                        <path d="M21 3a9 9 0 0 0-9 9 9 9 0 0 0-9-9"/>
+                        <path d="M3 21a9 9 0 0 1 9-9 9 9 0 0 1 9 9"/>
+                    </svg>
+                    <span>Processing History</span>
+                </div>
+                <div class="nav-item" data-view="account">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>Account Settings</span>
+                </div>
+            </nav>
+
+            <!-- Quick Stats -->
+            <div style="margin-top: auto;">
+                <h3 style="font-size: 0.875rem; font-weight: 500; margin-bottom: 1rem; color: var(--muted-foreground);">Quick Stats</h3>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--muted-foreground);">This Month</span>
+                        <span id="quick-uploads">7/10 uploads</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--muted-foreground);">AI Enhanced</span>
+                        <span id="quick-ai">2/5 used</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--muted-foreground);">Processing</span>
+                        <span id="quick-time">234s total</span>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="dashboard-content">
+            <!-- Overview View -->
+            <div id="overview-view" class="dashboard-view">
+                <div class="dashboard-header">
+                    <h1>Dashboard Overview</h1>
+                    <p>Welcome back! Here's your Pro Upscaler activity overview.</p>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <button class="stat-card btn btn-primary" onclick="upgradeAccount()" style="padding: 2rem 1.5rem; font-size: 1.2rem; width: 100%; height: 100%; border: 1px solid #374151; background: linear-gradient(135deg, #3b82f6, #8b5cf6); text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1rem; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 16px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(59, 130, 246, 0.2); transition: all 0.2s ease; cursor: pointer;" id="upgrade-btn">
+                        <div style="font-weight: 800; color: white; font-size: 1.75rem; letter-spacing: -0.025em; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);">See Upgrades</div>
+                        
+                        <div style="display: flex; gap: 2rem; width: 100%; justify-content: center; margin: 0.5rem 0;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.9rem; color: rgba(255,255,255,0.95); font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">BASIC - $9/mo</div>
+                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.9); line-height: 1.4; font-weight: 500;">500 uploads</div>
+                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.9); line-height: 1.4; font-weight: 500;">AI enhancement</div>
+                            </div>
+                            
+                            <div style="width: 2px; background: rgba(255,255,255,0.25); margin: 0.5rem 0; border-radius: 1px;"></div>
+                            
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.9rem; color: rgba(255,255,255,0.95); font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">PRO - $19/mo</div>
+                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.9); line-height: 1.4; font-weight: 500;">Unlimited uploads</div>
+                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.9); line-height: 1.4; font-weight: 500;">Priority processing</div>
+                            </div>
+                        </div>
+                        
+                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.9); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);">Choose your plan →</div>
+                    </button>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="9" cy="9" r="2"/>
+                                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                            </svg>
+                            Monthly Usage
+                        </div>
+                        <div class="stat-value" id="usage-count">7/10</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="usage-progress" style="width: 70%"></div>
+                        </div>
+                        <div class="stat-description">70% used</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/>
+                            </svg>
+                            AI Enhancements
+                        </div>
+                        <div class="stat-value" id="ai-count">2/5</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="ai-progress" style="width: 40%"></div>
+                        </div>
+                        <div class="stat-description">40% used</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12,6 12,12 16,14"/>
+                            </svg>
+                            Total Processing
+                        </div>
+                        <div class="stat-value" id="total-time">234s</div>
+                        <div class="stat-description">15 files processed</div>
+                    </div>
+                </div>
+
+                <!-- Usage Analytics Section -->
+                <div class="recent-activity" style="margin-bottom: 1.5rem;">
+                    <h2 style="margin-bottom: 0.75rem; font-size: 1.1rem; font-weight: 600;">Usage Analytics</h2>
+                    
+                    <!-- Analytics Charts Grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                        <!-- Processing Time Trend Chart -->
+                        <div style="background: #1e293b; border: 1px solid #374151; border-radius: 10px; padding: 1rem;">
+                            <h3 style="font-size: 0.9rem; font-weight: 600; color: #f8fafc; margin-bottom: 0.75rem;">Processing Time Trends</h3>
+                            <div style="position: relative; height: 160px; width: 100%;">
+                                <canvas id="processing-time-chart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- File Size Distribution -->
+                        <div style="background: #1e293b; border: 1px solid #374151; border-radius: 10px; padding: 1rem;">
+                            <h3 style="font-size: 0.9rem; font-weight: 600; color: #f8fafc; margin-bottom: 0.75rem;">File Size Distribution</h3>
+                            <div style="position: relative; height: 160px; width: 100%;">
+                                <canvas id="file-size-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Usage Insights -->
+                    <div style="background: #1e293b; border: 1px solid #374151; border-radius: 10px; padding: 1rem; margin-bottom: 1.5rem;">
+                        <h3 style="font-size: 0.9rem; font-weight: 600; color: #f8fafc; margin-bottom: 0.75rem;">Usage Insights</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem;">
+                            <div style="text-align: center; padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border-radius: 6px;">
+                                <div style="font-size: 1.25rem; font-weight: bold; color: #3b82f6;" id="avg-processing-time">2.3s</div>
+                                <div style="font-size: 0.75rem; color: #94a3b8;">Avg Processing Time</div>
+                            </div>
+                            <div style="text-align: center; padding: 0.75rem; background: rgba(16, 185, 129, 0.1); border-radius: 6px;">
+                                <div style="font-size: 1.25rem; font-weight: bold; color: #10b981;" id="success-rate">98.5%</div>
+                                <div style="font-size: 0.75rem; color: #94a3b8;">Success Rate</div>
+                            </div>
+                            <div style="text-align: center; padding: 0.75rem; background: rgba(139, 92, 246, 0.1); border-radius: 6px;">
+                                <div style="font-size: 1.25rem; font-weight: bold; color: #8b5cf6;" id="most-used-scale">4x</div>
+                                <div style="font-size: 0.75rem; color: #94a3b8;">Most Used Scale</div>
+                            </div>
+                            <div style="text-align: center; padding: 0.75rem; background: rgba(245, 158, 11, 0.1); border-radius: 6px;">
+                                <div style="font-size: 1.25rem; font-weight: bold; color: #f59e0b;" id="total-pixels">2.1B</div>
+                                <div style="font-size: 0.75rem; color: #94a3b8;">Total Pixels Processed</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="recent-activity">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="font-size: 1.25rem; font-weight: 600;">Recent Activity</h2>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <select id="activity-filter" style="background: #374151; border: 1px solid #475569; border-radius: 6px; color: #f8fafc; padding: 0.25rem 0.5rem; font-size: 0.875rem;">
+                                <option value="all">All Activity</option>
+                                <option value="completed">Completed</option>
+                                <option value="ai_enhanced">AI Enhanced</option>
+                                <option value="large_files">Large Files (>10MB)</option>
+                            </select>
+                            <button class="btn btn-primary" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">View All History</button>
+                        </div>
+                    </div>
+                    <div id="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-icon">
+                                <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=80&h=80&fit=crop&crop=center" alt="Landscape thumbnail" class="activity-thumbnail" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <svg class="activity-icon-fallback" style="display: none;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="9" cy="9" r="2"/>
+                                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                                </svg>
+                            </div>
+                            <div class="activity-details">
+                                <div class="activity-name">landscape_4k.jpg</div>
+                                <div class="activity-meta">4x upscaling • 18.3s</div>
+                            </div>
+                            <div class="activity-status">
+                                <div class="status-dot status-completed"></div>
+                                <span>Completed</span>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon">
+                                <img src="https://images.unsplash.com/photo-1494790108755-2616c75107ab?w=80&h=80&fit=crop&crop=face" alt="Portrait thumbnail" class="activity-thumbnail" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <svg class="activity-icon-fallback" style="display: none;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="9" cy="9" r="2"/>
+                                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                                </svg>
+                            </div>
+                            <div class="activity-details">
+                                <div class="activity-name">portrait_hd.png</div>
+                                <div class="activity-meta">2x upscaling • 8.7s</div>
+                            </div>
+                            <div class="activity-status">
+                                <div class="status-dot status-completed"></div>
+                                <span>Completed</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+
+            <!-- History View -->
+            <div id="history-view" class="dashboard-view" style="display: none;">
+                <div class="dashboard-header">
+                    <h1>Processing History</h1>
+                    <p>View and manage your image processing history</p>
+                </div>
+                <div class="recent-activity">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="font-size: 1.25rem; font-weight: 600;">Processing History</h2>
+                        <button class="btn btn-primary">Export CSV</button>
+                    </div>
+                    <div id="history-list">
+                        <!-- History items will be populated here -->
+                        <p style="text-align: center; color: var(--muted-foreground); padding: 2rem;">
+                            Processing history will be loaded here...
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account View -->
+            <div id="account-view" class="dashboard-view" style="display: none;">
+                <div class="dashboard-header">
+                    <h1>Account Settings</h1>
+                    <p>Manage your subscription, billing, and account preferences</p>
+                </div>
+                <div class="recent-activity">
+                    <h2 style="margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600;">Account Information</h2>
+                    <div style="padding: 1rem 0;">
+                        <p style="color: var(--muted-foreground);">Account management features will be available here...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Premium Back to Editor Button - Fixed Top Right -->
+        <a href="http://localhost:8080" class="premium-back-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14"/>
+                <path d="m12 5 7 7-7 7"/>
+            </svg>
+            <span>Back to Editor</span>
+        </a>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Dashboard navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                // Remove active class from all nav items
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                
+                // Add active class to clicked item
+                this.classList.add('active');
+                
+                // Hide all views
+                document.querySelectorAll('.dashboard-view').forEach(view => view.style.display = 'none');
+                
+                // Show selected view
+                const viewName = this.dataset.view;
+                document.getElementById(viewName + '-view').style.display = 'block';
+                
+                // Load data for the view
+                loadViewData(viewName);
+            });
+
+        // Initialize theme switcher
+        window.themeSwitcher = new ThemeSwitcher();
+        createColorSwitcher();
+        });
+
+        // Initialize theme switcher
+        window.themeSwitcher = new ThemeSwitcher();
+        createColorSwitcher();
+
+        // Load data for specific view
+        async function loadViewData(viewName) {
+            try {
+                switch(viewName) {
+                    case 'overview':
+                        await loadOverviewData();
+                        break;
+                    case 'history':
+                        await loadHistoryData();
+                        break;
+                    case 'account':
+                        await loadAccountData();
+                        break;
+                }
+            } catch (error) {
+                console.error('Failed to load view data:', error);
+            }
+        }
+
+        // Load overview data
+        async function loadOverviewData() {
+            try {
+                // Get user profile and subscription data
+                const [profileData, subscriptionData, tiersData] = await Promise.allSettled([
+                    dashboardService.getUserProfile(),
+                    dashboardService.getCurrentSubscription(),
+                    dashboardService.getSubscriptionTiers()
+                ]);
+
+                // Update UI with real data
+                if (profileData.status === 'fulfilled') {
+                    updateOverviewStats(profileData.value);
+                }
+
+                if (subscriptionData.status === 'fulfilled') {
+                    updateSubscriptionInfo(subscriptionData.value);
+                }
+
+                if (tiersData.status === 'fulfilled') {
+                    updateTiersInfo(tiersData.value);
+                }
+
+                // Update quick stats in sidebar
+                updateQuickStats();
+                
+                // Update analytics data
+                updateAnalyticsData(profileData.value);
+                
+                console.log('Overview data loaded successfully');
+            } catch (error) {
+                console.error('Failed to load overview data:', error);
+            }
+        }
+
+        // Load history data
+        async function loadHistoryData() {
+            const historyList = document.getElementById('history-list');
+            historyList.innerHTML = '<p style="text-align: center; color: #94a3b8; padding: 2rem;">Loading processing history...</p>';
+            
+            // Get sample thumbnails for different image types
+            const getThumbnailUrl = (filename) => {
+                if (filename.includes('landscape') || filename.includes('sunset')) {
+                    return 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=80&h=80&fit=crop&crop=center';
+                } else if (filename.includes('portrait') || filename.includes('wedding')) {
+                    return 'https://images.unsplash.com/photo-1494790108755-2616c75107ab?w=80&h=80&fit=crop&crop=face';
+                } else if (filename.includes('artwork') || filename.includes('vintage')) {
+                    return 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=80&h=80&fit=crop&crop=center';
+                } else {
+                    return 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=80&h=80&fit=crop&crop=center';
+                }
+            };
+            
+            // Simulate loading history data
+            setTimeout(() => {
+                historyList.innerHTML = `
+                    <div class="activity-item">
+                        <div class="activity-icon">
+                            <img src="${getThumbnailUrl('landscape_sunset_4k.jpg')}" alt="Landscape thumbnail" class="activity-thumbnail" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <svg class="activity-icon-fallback" style="display: none;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="9" cy="9" r="2"/>
+                                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                            </svg>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-name">landscape_sunset_4k.jpg</div>
+                            <div class="activity-meta">4x upscaling • 18.3s • AI Enhanced</div>
+                        </div>
+                        <div class="activity-status">
+                            <div class="status-dot status-completed"></div>
+                            <span>Completed</span>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon">
+                            <img src="${getThumbnailUrl('portrait_wedding.png')}" alt="Portrait thumbnail" class="activity-thumbnail" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <svg class="activity-icon-fallback" style="display: none;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="9" cy="9" r="2"/>
+                                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                            </svg>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-name">portrait_wedding.png</div>
+                            <div class="activity-meta">2x upscaling • 8.7s • Standard</div>
+                        </div>
+                        <div class="activity-status">
+                            <div class="status-dot status-completed"></div>
+                            <span>Completed</span>
+                        </div>
+                    </div>
+                `;
+            }, 1000);
+        }
+
+        // Load account data
+        async function loadAccountData() {
+            const accountView = document.getElementById('account-view');
+            // Placeholder for account data loading
+            console.log('Loading account data...');
+        }
+
+        // Update overview statistics
+        function updateOverviewStats(profileData) {
+            const user = profileData.user;
+            const stats = user.usage_stats;
+
+            // Update current tier (capitalize properly)
+            const tier = user.subscription_tier || 'free';
+            document.getElementById('current-tier').textContent = tier.charAt(0).toUpperCase() + tier.slice(1);
+            
+            // Update usage stats
+            if (stats) {
+                document.getElementById('usage-count').textContent = `${stats.monthly_uploads}/${stats.monthly_limit}`;
+                const usagePercent = stats.monthly_limit > 0 ? (stats.monthly_uploads / stats.monthly_limit) * 100 : 0;
+                document.getElementById('usage-progress').style.width = `${Math.min(usagePercent, 100)}%`;
+                
+                document.getElementById('ai-count').textContent = stats.ai_limit > 0 ? `${stats.ai_enhancements}/${stats.ai_limit}` : `${stats.ai_enhancements}/∞`;
+                const aiPercent = stats.ai_limit > 0 ? (stats.ai_enhancements / stats.ai_limit) * 100 : 0;
+                document.getElementById('ai-progress').style.width = `${Math.min(aiPercent, 100)}%`;
+                
+                document.getElementById('total-time').textContent = `${stats.total_processing_time || 0}s`;
+            }
+        }
+
+        // Update subscription information
+        function updateSubscriptionInfo(subscriptionData) {
+            const tier = subscriptionData.subscription_tier || 'Free';
+            const isActive = subscriptionData.is_active;
+            
+            // Show/hide upgrade button based on subscription
+            const upgradeBtn = document.getElementById('upgrade-btn');
+            
+            if (tier.toLowerCase() === 'free' && upgradeBtn) {
+                upgradeBtn.style.display = 'inline-flex';
+            } else if (upgradeBtn) {
+                upgradeBtn.style.display = 'none';
+            }
+        }
+
+        // Update tiers information
+        function updateTiersInfo(tiersData) {
+            console.log('Available tiers:', tiersData.tiers);
+            // Store tiers data for upgrade functionality
+            window.availableTiers = tiersData.tiers;
+        }
+
+        // Update quick stats in sidebar
+        function updateQuickStats() {
+            // These will be updated with real data from the overview stats
+            document.getElementById('quick-uploads').textContent = '7/10 uploads';
+            document.getElementById('quick-ai').textContent = '2/5 used';
+            document.getElementById('quick-time').textContent = '234s total';
+        }
+
+        // Upgrade account function
+        async function upgradeAccount() {
+            try {
+                console.log('Opening upgrade flow...');
+                
+                // Show upgrade options
+                const tier = await showUpgradeOptions();
+                if (!tier) return;
+                
+                // Create checkout session
+                const checkoutData = await dashboardService.createCheckoutSession(tier);
+                
+                if (checkoutData && checkoutData.url) {
+                    // Redirect to Stripe checkout
+                    window.location.href = checkoutData.url;
+                } else {
+                    throw new Error('Failed to create checkout session');
+                }
+            } catch (error) {
+                console.error('Upgrade failed:', error);
+                alert('Failed to start upgrade process. Please try again.');
+            }
+        }
+
+                // Show upgrade options - Premium Pricing Modal
+        async function showUpgradeOptions() {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.85);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                    backdrop-filter: blur(8px);
+                `;
+
+                const content = document.createElement('div');
+                content.style.cssText = `
+                    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+                    border: 1px solid #334155;
+                    border-radius: 16px;
+                    padding: 0;
+                    max-width: 900px;
+                    width: 95%;
+                    height: auto;
+                    max-height: 95vh;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+                `;
+
+                content.innerHTML = `
+                    <div style="padding: 1.5rem; text-align: center; border-bottom: 1px solid #334155;">
+                        <h2 style="margin: 0 0 0.25rem 0; color: #f8fafc; font-size: 1.75rem; font-weight: 800;">Choose Your Plan</h2>
+                        <p style="margin: 0; color: #94a3b8; font-size: 0.9rem;">Unlock the full potential of Pro Upscaler</p>
+                    </div>
+                    
+                    <div style="padding: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <!-- Basic Plan -->
+                        <div style="background: linear-gradient(135deg, #1e293b, #334155); border: 2px solid #475569; border-radius: 12px; padding: 1.5rem; position: relative; transition: all 0.3s ease; display: flex; flex-direction: column; justify-content: space-between;" onmouseover="this.style.borderColor='#3b82f6'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='#475569'; this.style.transform='translateY(0)';">
+                            <div>
+                                <div style="text-align: center; margin-bottom: 1rem;">
+                                    <h3 style="margin: 0 0 0.25rem 0; color: #f8fafc; font-size: 1.25rem; font-weight: 700;">Basic</h3>
+                                    <div style="margin-bottom: 0.5rem;">
+                                        <span style="color: #3b82f6; font-size: 2rem; font-weight: 800;">$9</span>
+                                        <span style="color: #94a3b8; font-size: 0.9rem;">/month</span>
+                                    </div>
+                                    <p style="margin: 0; color: #94a3b8; font-size: 0.8rem;">Perfect for regular users</p>
+                                </div>
+                                <ul style="list-style: none; padding: 0; margin: 0 0 1.25rem 0;">
+                                    <li style="display: flex; align-items: center; margin-bottom: 0.5rem; color: #f8fafc; font-size: 0.85rem;">
+                                        <svg width="14" height="14" style="margin-right: 0.5rem; color: #10b981;" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                        500 monthly uploads
+                                    </li>
+                                    <li style="display: flex; align-items: center; margin-bottom: 0.5rem; color: #f8fafc; font-size: 0.85rem;">
+                                        <svg width="14" height="14" style="margin-right: 0.5rem; color: #10b981;" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                        AI face enhancement
+                                    </li>
+                                    <li style="display: flex; align-items: center; margin-bottom: 0.5rem; color: #f8fafc; font-size: 0.85rem;">
+                                        <svg width="14" height="14" style="margin-right: 0.5rem; color: #10b981;" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                        Up to 100MB file size
+                                    </li>
+                                    <li style="display: flex; align-items: center; margin-bottom: 0.5rem; color: #f8fafc; font-size: 0.85rem;">
+                                        <svg width="14" height="14" style="margin-right: 0.5rem; color: #10b981;" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                        Standard processing
+                                    </li>
+                                    <li style="display: flex; align-items: center; margin-bottom: 0.5rem; color: #f8fafc; font-size: 0.85rem;">
+                                        <svg width="14" height="14" style="margin-right: 0.5rem; color: #10b981;" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                        Email support
+                                    </li>
+                                </ul>
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: center; margin-top: auto;">
+                                <button onclick="selectTier('basic')" style="min-width: 140px; padding: 0.75rem; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none; border-radius: 8px; color: white; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='linear-gradient(135deg, #1d4ed8, #1e40af)'" onmouseout="this.style.background='linear-gradient(135deg, #3b82f6, #1d4ed8)';">
+                                    Choose Basic
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Pro Plan -->
+                        <div style="background: linear-gradient(135deg, #1e293b, #334155); border: 2px solid #8b5cf6; border-radius: 12px; padding: 1.5rem; position: relative; transition: all 0.3s ease; display: flex; flex-direction: column; justify-content: space-between;" onmouseover="this.style.borderColor='#a855f7'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='#8b5cf6'; this.style.transform='translateY(0)';">
+                            <div style="position: absolute; top: -8px; right: 1rem; background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; padding: 0.25rem 0.75rem; border-radius: 16px; font-size: 0.75rem; font-weight: 600;">
+                                POPULAR
+                            </div>
+                            <div>
+                                <div style="text-align: center; margin-bottom: 1rem;">
+                                    <h3 style="margin: 0 0 0.25rem 0; color: #f8fafc; font-size: 1.25rem; font-weight: 700;">Pro</h3>
+                                    <div style="margin-bottom: 0.5rem;">
+                                        <span style="color: #8b5cf6; font-size: 2rem; font-weight: 800;">$19</span>
+                                        <span style="color: #94a3b8; font-size: 0.9rem;">/month</span>
+                                    </div>
+                                    <p style="margin: 0; color: #94a3b8; font-size: 0.8rem;">For power users & professionals</p>
+                                </div>
+                                <ul style="list-style: none; padding: 0; margin: 0 0 1.25rem 0;">
+                                    <li style="display: flex; align-items: center; margin-bottom: 0.5rem; color: #f8fafc; font-size: 0.85rem;"><svg width="14" height="14" style="margin-right: 0.5rem; color: #10b981;" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg><strong>Unlimited uploads</strong></li>
+                                    <li style="display: flex; align-items: center; margin-bottom: 0.5rem; color: #f8fafc; font-size: 0.85rem;"><svg width="14" height="14" style="margin-right: 0.5rem; color: #10b981;" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>Advanced AI enhancement</li>
+                                    <li style="display: flex; align-items: center; margin-bottom: 0.5rem; color: #f8fafc; font-size: 0.85rem;"><svg width="14" height="14" style="margin-right: 0.5rem; color: #10b981;" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>Up to 1GB file size</li>
+                                    <li style="display: flex; align-items: center; margin-bottom: 0.5rem; color: #f8fafc; font-size: 0.85rem;"><svg width="14" height="14" style="margin-right: 0.5rem; color: #10b981;" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg><strong>Priority processing</strong></li>
+                                    <li style="display: flex; align-items: center; margin-bottom: 0.5rem; color: #f8fafc; font-size: 0.85rem;"><svg width="14" height="14" style="margin-right: 0.5rem; color: #10b981;" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>API access</li>
+                                    <li style="display: flex; align-items: center; margin-bottom: 0.5rem; color: #f8fafc; font-size: 0.85rem;"><svg width="14" height="14" style="margin-right: 0.5rem; color: #10b981;" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>Priority support</li>
+                                </ul>
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: center; margin-top: auto;">
+                                <button onclick="selectTier('pro')" style="min-width: 140px; padding: 0.75rem; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: none; border-radius: 8px; color: white; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='linear-gradient(135deg, #7c3aed, #6d28d9)'" onmouseout="this.style.background='linear-gradient(135deg, #8b5cf6, #7c3aed)';">
+                                    Choose Pro
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding: 1rem 1.5rem; text-align: center; border-top: 1px solid #334155;">
+                        <button onclick="closeModal()" style="padding: 0.5rem 1.5rem; background: transparent; border: 1px solid #475569; border-radius: 8px; color: #94a3b8; font-weight: 500; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.borderColor='#64748b'; this.style.color='#f1f5f9'" onmouseout="this.style.borderColor='#475569'; this.style.color='#94a3b8';">
+                            Maybe Later
+                        </button>
+                    </div>
+                `;
+
+                window.selectTier = (tier) => {
+                    document.body.removeChild(modal);
+                    resolve(tier);
+                };
+
+                window.closeModal = () => {
+                    document.body.removeChild(modal);
+                    resolve(null);
+                };
+
+                modal.appendChild(content);
+                document.body.appendChild(modal);
+            });
+
+        // Initialize theme switcher
+        window.themeSwitcher = new ThemeSwitcher();
+        createColorSwitcher();
+        }
+
+        // Analytics Charts
+        let processingTimeChart = null;
+        let fileSizeChart = null;
+
+        // Initialize analytics charts
+        function initializeAnalyticsCharts() {
+            // Destroy existing charts if they exist
+            if (processingTimeChart) {
+                processingTimeChart.destroy();
+                processingTimeChart = null;
+            }
+            if (fileSizeChart) {
+                fileSizeChart.destroy();
+                fileSizeChart = null;
+            }
+            
+            // Processing Time Trend Chart
+            const processingCtx = document.getElementById('processing-time-chart');
+            if (processingCtx) {
+                processingTimeChart = new Chart(processingCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                        datasets: [{
+                            label: 'Avg Processing Time (s)',
+                            data: [3.2, 2.8, 2.5, 2.3, 2.1, 2.0],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#f8fafc'
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: '#94a3b8'
+                                },
+                                grid: {
+                                    color: 'rgba(148, 163, 184, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#94a3b8'
+                                },
+                                grid: {
+                                    color: 'rgba(148, 163, 184, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+
+        // Initialize theme switcher
+        window.themeSwitcher = new ThemeSwitcher();
+        createColorSwitcher();
+            }
+
+            // File Size Distribution Chart
+            const fileSizeCtx = document.getElementById('file-size-chart');
+            if (fileSizeCtx) {
+                fileSizeChart = new Chart(fileSizeCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['< 1MB', '1-5MB', '5-10MB', '10-50MB', '> 50MB'],
+                        datasets: [{
+                            data: [25, 35, 20, 15, 5],
+                            backgroundColor: [
+                                '#10b981',
+                                '#3b82f6',
+                                '#8b5cf6',
+                                '#f59e0b',
+                                '#ef4444'
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: '#f8fafc',
+                                    usePointStyle: true,
+                                    padding: 15
+                                }
+                            }
+                        }
+                    }
+                });
+
+        // Initialize theme switcher
+        window.themeSwitcher = new ThemeSwitcher();
+        createColorSwitcher();
+            }
+        }
+
+        // Activity filtering
+        function initializeActivityFiltering() {
+            const filterSelect = document.getElementById('activity-filter');
+            if (filterSelect) {
+                filterSelect.addEventListener('change', function() {
+                    const filterValue = this.value;
+                    filterActivityList(filterValue);
+                });
+
+        // Initialize theme switcher
+        window.themeSwitcher = new ThemeSwitcher();
+        createColorSwitcher();
+            }
+        }
+
+        // Filter activity list based on selected criteria
+        function filterActivityList(filter) {
+            const activityItems = document.querySelectorAll('.activity-item');
+            
+            activityItems.forEach(item => {
+                const filename = item.querySelector('.activity-name').textContent.toLowerCase();
+                const meta = item.querySelector('.activity-meta').textContent.toLowerCase();
+                const status = item.querySelector('.activity-status span').textContent.toLowerCase();
+                
+                let shouldShow = true;
+                
+                switch(filter) {
+                    case 'completed':
+                        shouldShow = status.includes('completed');
+                        break;
+                    case 'ai_enhanced':
+                        shouldShow = meta.includes('ai enhanced');
+                        break;
+                    case 'large_files':
+                        // Simulate large file detection (would be based on actual file size data)
+                        shouldShow = filename.includes('4k') || filename.includes('large') || filename.includes('sunset');
+                        break;
+                    case 'all':
+                    default:
+                        shouldShow = true;
+                        break;
+                }
+                
+                item.style.display = shouldShow ? 'flex' : 'none';
+            });
+
+        // Initialize theme switcher
+        window.themeSwitcher = new ThemeSwitcher();
+        createColorSwitcher();
+        }
+
+        // Update analytics with real data
+        function updateAnalyticsData(userData) {
+            if (userData && userData.analytics) {
+                const analytics = userData.analytics;
+                
+                // Update insight cards
+                document.getElementById('avg-processing-time').textContent = `${analytics.avgProcessingTime || '2.3'}s`;
+                document.getElementById('success-rate').textContent = `${analytics.successRate || '98.5'}%`;
+                document.getElementById('most-used-scale').textContent = `${analytics.mostUsedScale || '4'}x`;
+                document.getElementById('total-pixels').textContent = analytics.totalPixels || '2.1B';
+                
+                // Update charts if data is available
+                if (analytics.processingTrends && processingTimeChart) {
+                    processingTimeChart.data.datasets[0].data = analytics.processingTrends;
+                    processingTimeChart.update('none'); // Disable animation to prevent loops
+                }
+                
+                if (analytics.fileSizeDistribution && fileSizeChart) {
+                    fileSizeChart.data.datasets[0].data = analytics.fileSizeDistribution;
+                    fileSizeChart.update('none'); // Disable animation to prevent loops
+                }
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard initialized');
+            
+            // Initialize upgrade button state (show for free users)
+            const upgradeBtn = document.getElementById('upgrade-btn');
+            
+            if (upgradeBtn) {
+                // Show by default for free users, will be hidden if user is premium
+                upgradeBtn.style.display = 'inline-flex';
+            }
+            
+            // Initialize analytics charts
+            initializeAnalyticsCharts();
+            
+            // Initialize activity filtering
+            initializeActivityFiltering();
+            
+            loadViewData('overview');
+        });
+
+        // Initialize theme switcher
+        window.themeSwitcher = new ThemeSwitcher();
+        createColorSwitcher();
+
+        // Listen for messages from parent window
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.action === 'updateDashboard') {
+                loadViewData('overview');
+            }
+        });
+
+        // Initialize theme switcher
+        window.themeSwitcher = new ThemeSwitcher();
+        createColorSwitcher();
+    </script>
+</body>
+</html> 

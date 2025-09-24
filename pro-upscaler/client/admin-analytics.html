@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Upscaler - Analytics</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Enhanced Dark Theme Colors */
+            --bg-primary: #0f0f23;
+            --bg-secondary: #1a1a2e;
+            --bg-tertiary: #16213e;
+            --bg-accent: #0f3460;
+            
+            --surface-primary: #1e1e2e;
+            --surface-secondary: #262637;
+            --surface-tertiary: #2d2d44;
+            --surface-hover: #313244;
+            
+            --border-primary: #3b3b54;
+            --border-secondary: #45455a;
+            --border-accent: #5b5b73;
+            
+            --text-primary: #e6e6e6;
+            --text-secondary: #b3b3b3;
+            --text-muted: #8b8b8b;
+            --text-accent: #ffffff;
+            
+            --accent-blue: #3b82f6;
+            --accent-blue-hover: #2563eb;
+            --accent-green: #10b981;
+            --accent-green-hover: #059669;
+            --accent-purple: #8b5cf6;
+            --accent-purple-hover: #7c3aed;
+            --accent-orange: #f59e0b;
+            --accent-orange-hover: #d97706;
+            --accent-red: #ef4444;
+            --accent-red-hover: #dc2626;
+            
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .admin-container {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            grid-template-rows: auto 1fr;
+            grid-template-areas: 
+                "sidebar header"
+                "sidebar main";
+        }
+
+        /* Sidebar */
+        .sidebar {
+            grid-area: sidebar;
+            background: var(--surface-primary);
+            border-right: 1px solid var(--border-primary);
+            padding: 2rem 1.5rem;
+            position: fixed;
+            height: 100vh;
+            width: 280px;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-primary);
+        }
+
+        .sidebar-logo {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .sidebar-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-accent);
+        }
+
+        .nav-section {
+            margin-bottom: 2rem;
+        }
+
+        .nav-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background: var(--surface-hover);
+            color: var(--text-primary);
+            transform: translateX(4px);
+        }
+
+        .nav-item.active {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Header */
+        .header {
+            grid-area: header;
+            background: var(--surface-primary);
+            border-bottom: 1px solid var(--border-primary);
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-accent);
+        }
+
+        .header-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .action-btn {
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-secondary);
+            color: var(--text-primary);
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .action-btn:hover {
+            background: var(--surface-tertiary);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .action-btn.primary {
+            background: var(--gradient-primary);
+            border-color: transparent;
+            color: white;
+        }
+
+        .action-btn.primary:hover {
+            background: var(--gradient-primary);
+            box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+        }
+
+        .time-selector {
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-secondary);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        /* Main Content */
+        .main-content {
+            grid-area: main;
+            padding: 2rem;
+            background: var(--bg-secondary);
+            min-height: calc(100vh - 80px);
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--surface-primary);
+            border: 1px solid var(--border-primary);
+            border-radius: 16px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            border-color: var(--border-accent);
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .metric-card.revenue::before {
+            background: var(--gradient-success);
+        }
+
+        .metric-card.users::before {
+            background: var(--gradient-primary);
+        }
+
+        .metric-card.processing::before {
+            background: var(--gradient-warning);
+        }
+
+        .metric-card.conversion::before {
+            background: var(--gradient-danger);
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .metric-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: var(--surface-secondary);
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .metric-change {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .change-positive {
+            color: var(--accent-green);
+        }
+
+        .change-negative {
+            color: var(--accent-red);
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .dashboard-section {
+            background: var(--surface-primary);
+            border: 1px solid var(--border-primary);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--surface-secondary);
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-accent);
+        }
+
+        .section-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.125rem;
+            background: var(--surface-tertiary);
+        }
+
+        .section-content {
+            padding: 1.5rem;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            height: 250px;
+            display: flex;
+            align-items: end;
+            justify-content: space-around;
+            padding: 1rem;
+            background: var(--surface-secondary);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .chart-bar {
+            width: 24px;
+            background: var(--gradient-success);
+            border-radius: 4px 4px 0 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .chart-bar:hover {
+            opacity: 0.8;
+            transform: scale(1.05);
+        }
+
+        .chart-bar::after {
+            content: attr(data-value);
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface-primary);
+            color: var(--text-primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .chart-bar:hover::after {
+            opacity: 1;
+        }
+
+        .chart-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        /* Data Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-primary);
+        }
+
+        .data-table th {
+            background: var(--surface-tertiary);
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .data-table td {
+            color: var(--text-primary);
+        }
+
+        .data-table tr:hover {
+            background: var(--surface-secondary);
+        }
+
+        .tier-badge {
+            padding: 0.375rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+            border: 1px solid;
+        }
+
+        .tier-free {
+            background: hsl(var(--muted) / 0.1);
+            color: hsl(var(--muted-foreground));
+            border-color: rgba(107, 114, 128, 0.2);
+        }
+
+        .tier-basic {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-blue);
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .tier-pro {
+            background: hsl(var(--accent) / 0.1);
+            color: var(--accent-purple);
+            border-color: hsl(var(--accent) / 0.2);
+        }
+
+        /* Progress Bars */
+        .progress-container {
+            margin: 1rem 0;
+        }
+
+        .progress-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .progress-label {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .progress-value {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .progress-bar {
+            width: 120px;
+            height: 8px;
+            background: var(--surface-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-primary);
+            border-radius: 4px;
+            transition: width 0.8s ease;
+        }
+
+        .progress-percentage {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            min-width: 35px;
+            text-align: right;
+        }
+
+        /* Bottom Grid */
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        /* Export Section */
+        .export-section {
+            background: var(--surface-primary);
+            border: 1px solid var(--border-primary);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .export-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .export-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-accent);
+        }
+
+        .export-description {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+        }
+
+        .export-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .export-btn {
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-secondary);
+            color: var(--text-primary);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .export-btn:hover {
+            background: var(--surface-tertiary);
+            border-color: var(--border-accent);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .export-icon {
+            font-size: 1.25rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .admin-container {
+                grid-template-columns: 1fr;
+                grid-template-areas: 
+                    "header"
+                    "main";
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .bottom-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .metrics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            }
+
+            .export-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">🛡️</div>
+                <div>
+                    <div class="sidebar-title">Pro Upscaler</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Admin Panel</div>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Dashboard</div>
+                <a href="/admin" class="nav-item">
+                    <div class="nav-icon">📊</div>
+                    <span>Overview</span>
+                </a>
+                <a href="/admin-users" class="nav-item">
+                    <div class="nav-icon">👥</div>
+                    <span>User Management</span>
+                </a>
+                <a href="/admin-analytics" class="nav-item active">
+                    <div class="nav-icon">📈</div>
+                    <span>Analytics</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">System</div>
+                <a href="#" class="nav-item">
+                    <div class="nav-icon">🖥️</div>
+                    <span>System Health</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <div class="nav-icon">📋</div>
+                    <span>Audit Logs</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <div class="nav-icon">⚙️</div>
+                    <span>Settings</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Application</div>
+                <a href="/" class="nav-item">
+                    <div class="nav-icon">🏠</div>
+                    <span>Back to App</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <div class="header-title">Business Analytics</div>
+                <div class="header-subtitle">Revenue, user growth, and system performance insights</div>
+            </div>
+            <div class="header-actions">
+                <select class="time-selector">
+                    <option>Last 7 days</option>
+                    <option>Last 30 days</option>
+                    <option>Last 90 days</option>
+                    <option>Last year</option>
+                </select>
+                <button class="action-btn primary">
+                    <span>📈</span>
+                    <span>Export Report</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Key Metrics -->
+            <div class="metrics-grid">
+                <div class="metric-card revenue">
+                    <div class="metric-header">
+                        <div class="metric-icon" style="background: hsl(var(--success) / 0.1); color: var(--accent-green);">💰</div>
+                    </div>
+                    <div class="metric-value" id="mrrValue">$12,450</div>
+                    <div class="metric-label">Monthly Recurring Revenue</div>
+                    <div class="metric-change change-positive">
+                        <span>📈</span>
+                        <span>+12.5% from last month</span>
+                    </div>
+                </div>
+
+                <div class="metric-card users">
+                    <div class="metric-header">
+                        <div class="metric-icon" style="background: rgba(59, 130, 246, 0.1); color: var(--accent-blue);">👥</div>
+                    </div>
+                    <div class="metric-value" id="newUsersValue">89</div>
+                    <div class="metric-label">New users this month</div>
+                    <div class="metric-change change-positive">
+                        <span>📈</span>
+                        <span>+8.3% from last month</span>
+                    </div>
+                </div>
+
+                <div class="metric-card processing">
+                    <div class="metric-header">
+                        <div class="metric-icon" style="background: hsl(var(--warning) / 0.1); color: var(--accent-orange);">⚡</div>
+                    </div>
+                    <div class="metric-value" id="processingValue">15.2K</div>
+                    <div class="metric-label">Images processed this month</div>
+                    <div class="metric-change change-positive">
+                        <span>📈</span>
+                        <span>+23.1% from last month</span>
+                    </div>
+                </div>
+
+                <div class="metric-card conversion">
+                    <div class="metric-header">
+                        <div class="metric-icon" style="background: hsl(var(--destructive) / 0.1); color: var(--accent-red);">💎</div>
+                    </div>
+                    <div class="metric-value" id="conversionValue">4.2%</div>
+                    <div class="metric-label">Free to paid conversion</div>
+                    <div class="metric-change change-negative">
+                        <span>📉</span>
+                        <span>-0.8% from last month</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts and Analytics -->
+            <div class="dashboard-grid">
+                <!-- Revenue Chart -->
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <div class="section-icon" style="background: hsl(var(--success) / 0.1); color: var(--accent-green);">📈</div>
+                            <span>Revenue Trend</span>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Last 7 weeks</div>
+                    </div>
+                    <div class="section-content">
+                        <div class="chart-container" id="revenueChart">
+                            <div class="chart-bar" style="height: 60px;" data-value="$2,800"></div>
+                            <div class="chart-bar" style="height: 75px;" data-value="$3,200"></div>
+                            <div class="chart-bar" style="height: 90px;" data-value="$3,600"></div>
+                            <div class="chart-bar" style="height: 100px;" data-value="$4,000"></div>
+                            <div class="chart-bar" style="height: 85px;" data-value="$3,400"></div>
+                            <div class="chart-bar" style="height: 95px;" data-value="$3,800"></div>
+                            <div class="chart-bar" style="height: 110px;" data-value="$4,400"></div>
+                        </div>
+                        <div class="chart-labels">
+                            <span>7 weeks ago</span>
+                            <span>This week</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subscription Breakdown -->
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <div class="section-icon" style="background: hsl(var(--accent) / 0.1); color: var(--accent-purple);">🎯</div>
+                            <span>Subscription Breakdown</span>
+                        </div>
+                    </div>
+                    <div class="section-content">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Tier</th>
+                                    <th>Users</th>
+                                    <th>Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="tier-badge tier-free">Free</span></td>
+                                    <td>892</td>
+                                    <td>$0</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="tier-badge tier-basic">Basic</span></td>
+                                    <td>247</td>
+                                    <td>$2,467</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="tier-badge tier-pro">Pro</span></td>
+                                    <td>108</td>
+                                    <td>$2,160</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-primary); font-weight: 600; display: flex; justify-content: space-between;">
+                            <span>Total MRR:</span>
+                            <span style="color: var(--accent-green);">$4,627</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Analytics -->
+            <div class="bottom-grid">
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <div class="section-icon" style="background: rgba(59, 130, 246, 0.1); color: var(--accent-blue);">⚡</div>
+                            <span>Processing Analytics</span>
+                        </div>
+                    </div>
+                    <div class="section-content">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Processing Type</th>
+                                    <th>Jobs</th>
+                                    <th>Avg Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Standard Upscaling</td>
+                                    <td>12,456</td>
+                                    <td>3.2s</td>
+                                </tr>
+                                <tr>
+                                    <td>AI Enhancement</td>
+                                    <td>2,847</td>
+                                    <td>8.7s</td>
+                                </tr>
+                                <tr>
+                                    <td>Batch Processing</td>
+                                    <td>892</td>
+                                    <td>45.3s</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <div class="section-icon" style="background: hsl(var(--warning) / 0.1); color: var(--accent-orange);">🎨</div>
+                            <span>Popular Scale Factors</span>
+                        </div>
+                    </div>
+                    <div class="section-content">
+                        <div class="progress-container">
+                            <div class="progress-item">
+                                <span class="progress-label">4x Upscaling</span>
+                                <div class="progress-value">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 65%;"></div>
+                                    </div>
+                                    <span class="progress-percentage">65%</span>
+                                </div>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-label">2x Upscaling</span>
+                                <div class="progress-value">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 45%;"></div>
+                                    </div>
+                                    <span class="progress-percentage">45%</span>
+                                </div>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-label">8x Upscaling</span>
+                                <div class="progress-value">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 25%;"></div>
+                                    </div>
+                                    <span class="progress-percentage">25%</span>
+                                </div>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-label">Other</span>
+                                <div class="progress-value">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 15%;"></div>
+                                    </div>
+                                    <span class="progress-percentage">15%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Options -->
+            <div class="export-section">
+                <div class="export-header">
+                    <div class="section-icon" style="background: hsl(var(--muted) / 0.1); color: hsl(var(--muted-foreground));">📊</div>
+                    <div class="export-title">Export Analytics</div>
+                </div>
+                <div class="export-description">
+                    Download detailed analytics reports for further analysis and business intelligence
+                </div>
+                <div class="export-buttons">
+                    <button class="export-btn" onclick="exportAnalytics('revenue')">
+                        <span class="export-icon">📈</span>
+                        <div>
+                            <div style="font-weight: 600;">Revenue Report</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">MRR, growth, billing data</div>
+                        </div>
+                    </button>
+                    <button class="export-btn" onclick="exportAnalytics('users')">
+                        <span class="export-icon">👥</span>
+                        <div>
+                            <div style="font-weight: 600;">User Analytics</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Growth, engagement, retention</div>
+                        </div>
+                    </button>
+                    <button class="export-btn" onclick="exportAnalytics('usage')">
+                        <span class="export-icon">⚡</span>
+                        <div>
+                            <div style="font-weight: 600;">Usage Report</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Processing stats, performance</div>
+                        </div>
+                    </button>
+                    <button class="export-btn" onclick="exportAnalytics('all')">
+                        <span class="export-icon">📊</span>
+                        <div>
+                            <div style="font-weight: 600;">Complete Report</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">All analytics combined</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AnalyticsDashboard {
+            constructor() {
+                this.init();
+            }
+
+            init() {
+                this.loadAnalytics();
+                this.animateCharts();
+                this.setupEventListeners();
+                
+                // Simulate real-time updates every 60 seconds
+                setInterval(() => {
+                    this.updateMetrics();
+                }, 60000);
+            }
+
+            setupEventListeners() {
+                // Chart bar hover effects are handled by CSS
+                // Time selector changes
+                const timeSelector = document.querySelector('.time-selector');
+                timeSelector.addEventListener('change', (e) => {
+                    console.log('Time period changed to:', e.target.value);
+                    this.loadAnalytics();
+                });
+            }
+
+            async loadAnalytics() {
+                // In real implementation, this would load from admin API endpoints
+                console.log('Loading analytics data...');
+                
+                // Animate progress bars
+                this.animateProgressBars();
+            }
+
+            animateCharts() {
+                // Animate chart bars on load
+                const bars = document.querySelectorAll('.chart-bar');
+                bars.forEach((bar, index) => {
+                    const height = bar.style.height;
+                    bar.style.height = '0px';
+                    bar.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        bar.style.height = height;
+                        bar.style.opacity = '1';
+                    }, index * 100 + 500);
+                });
+            }
+
+            animateProgressBars() {
+                const progressBars = document.querySelectorAll('.progress-fill');
+                progressBars.forEach((bar, index) => {
+                    const width = bar.style.width;
+                    bar.style.width = '0%';
+                    
+                    setTimeout(() => {
+                        bar.style.width = width;
+                    }, index * 200 + 1000);
+                });
+            }
+
+            updateMetrics() {
+                // Simulate real-time metric updates
+                const mrrElement = document.getElementById('mrrValue');
+                const currentMRR = parseFloat(mrrElement.textContent.replace('$', '').replace(',', ''));
+                const newMRR = currentMRR + Math.random() * 200 - 100; // Random change
+                
+                // Animate the change
+                this.animateMetricUpdate(mrrElement, `$${Math.round(newMRR).toLocaleString()}`);
+
+                // Update other metrics similarly
+                const processingElement = document.getElementById('processingValue');
+                const currentProcessing = parseFloat(processingElement.textContent.replace('K', '')) * 1000;
+                const newProcessing = currentProcessing + Math.random() * 100;
+                this.animateMetricUpdate(processingElement, `${(newProcessing / 1000).toFixed(1)}K`);
+            }
+
+            animateMetricUpdate(element, newValue) {
+                if (element && element.textContent !== newValue) {
+                    element.style.transform = 'scale(1.05)';
+                    element.style.color = 'var(--accent-blue)';
+                    
+                    setTimeout(() => {
+                        element.textContent = newValue;
+                        element.style.transform = 'scale(1)';
+                        element.style.color = 'var(--text-accent)';
+                    }, 150);
+                }
+            }
+        }
+
+        function exportAnalytics(type) {
+            // Mock export functionality
+            const exportTypes = {
+                'revenue': 'Revenue Analytics Report',
+                'users': 'User Growth Report', 
+                'usage': 'Usage Analytics Report',
+                'all': 'Complete Analytics Report'
+            };
+
+            // Show loading state
+            const button = event.target.closest('.export-btn');
+            const originalContent = button.innerHTML;
+            button.innerHTML = '<span class="export-icon">⏳</span><div><div style="font-weight: 600;">Generating...</div><div style="font-size: 0.75rem; color: var(--text-muted);">Please wait</div></div>';
+            button.disabled = true;
+
+            setTimeout(() => {
+                button.innerHTML = originalContent;
+                button.disabled = false;
+                
+                alert(`✅ ${exportTypes[type]} Generated!\n\nIn a real implementation, this would:\n1. Generate the report data\n2. Create a downloadable file (CSV/PDF)\n3. Trigger the download\n4. Log the export action for audit\n\n📊 Report ready for download!`);
+            }, 2000);
+        }
+
+        // Initialize analytics dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new AnalyticsDashboard();
+        });
+    </script>
+</body>
+</html> 
