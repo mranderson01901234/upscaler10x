@@ -3,7 +3,7 @@
  * Handles subscription management, payments, and webhook processing
  */
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || 'sk_test_51RpmSNCg03i5TOI3RlOydQk3te8Efw37D71QUiSeetRSoXo3K5ENdMvGm0v7Va8AefQChXkGB29BZzTA73t01KEg00KsPcO3hL');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
 
 class StripePaymentService {

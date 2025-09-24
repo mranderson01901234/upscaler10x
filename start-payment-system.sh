@@ -8,9 +8,9 @@ echo "🛑 Stopping existing services..."
 pkill -f "node server.js" 2>/dev/null || true
 sleep 2
 
-# Set environment variables
-export STRIPE_SECRET_KEY="sk_test_51RpmSNCg03i5TOI3RlOydQk3te8Efw37D71QUiSeetRSoXo3K5ENdMvGm0v7Va8AefQChXkGB29BZzTA73t01KEg00KsPcO3hL"
-export STRIPE_PUBLISHABLE_KEY="pk_test_51RpmSNCg03i5TOI3NkBTuBS8eM2p8tNRJzIqUaoRtoMTz9zC6892pywyk1SOoh8i25qVajFLkjWuxyRrxmHOHlcg005SttgdIs"
+# Set environment variables (replace with your actual keys)
+export STRIPE_SECRET_KEY="your_stripe_secret_key_here"
+export STRIPE_PUBLISHABLE_KEY="your_stripe_publishable_key_here"
 
 echo "✅ Environment variables set"
 echo "   - Stripe Secret Key: ${STRIPE_SECRET_KEY:0:20}..."
